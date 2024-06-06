@@ -226,6 +226,9 @@ def music(c, w, h, c_music, hr, mi, sec):
                     title = re.sub(r'^title: ', '', title)
                     artist = re.sub(r'^artist: ', '', artist)
                     album = re.sub(r'^album: ', '', album)
+                except TypeError:
+                        progress = 0
+                        song_time = ['00', '00']
                 except Exception as e:
                     print(e)
 
