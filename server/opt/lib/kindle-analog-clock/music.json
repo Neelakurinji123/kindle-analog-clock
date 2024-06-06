@@ -1,0 +1,11 @@
+{
+	"music": {
+		"1": {"False": {"start_time": "09:00", "stop_time": "09:30", "playlist": "pops-selection", "playmode": "normal", "repeat": "True", "file_location": "server"}},
+		"2": {"Flase": {"start_time": "20:00", "stop_time": "20:30", "playlist": "pops-selection", "playmode": "reverse", "repeat": "True", "file_location": "server"}},
+		"3": {"False": {"start_time": "21:39", "stop_time": "21:58", "playlist": "pops-selection", "playmode": "shuffle", "repeat": "False", "file_location": "server"}},
+		"4": {"False": {"start_time": "00:00", "stop_time": "00:00", "playlist": "pops-selection", "playmode": "shuffle", "repeat": "False", "file_location": "kindle"}}
+	},
+	"env": {
+		"display": "circle"
+	}
+}

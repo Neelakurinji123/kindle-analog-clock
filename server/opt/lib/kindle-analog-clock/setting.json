@@ -1,0 +1,23 @@
+{
+	"clock": {
+		"layout": "landscape",
+		"set_interval": 5,
+		"timezone": "local",
+		"show_date": "True",
+		"color_sec": "rgb(0,0,0)",
+		"color_min": "rgb(0,0,0)",
+		"color_hour": "rgb(0,0,0)",
+		"color_music": "rgb(128,128,128)",
+		"invert_color": "rgb(128,128,128)",
+		"reflesh_min" : "False",
+		"reflesh_hour" : "True",
+		"stroke_sec_radius": 250,
+		"stroke_sec_inner_radius": 235,
+		"stroke_min_radius": 230,
+		"stroke_min_inner_radius": 170,
+		"stroke_hour_radius": 165,
+		"stroke_hour_inner_radius": 65,
+		"stroke_music_radius": 255,
+		"stroke_music_inner_radius": 235
+	}
+}

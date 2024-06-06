@@ -1,0 +1,16 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Load clock</title>
+    <script type="text/javascript">
+		setInterval(function() {
+		    var myImageElement = document.getElementById('myImage');
+		    myImageElement.src = 'file:///private/tmp/KindleAnalogClock_flatten.png?rand=' + Math.random();
+		}, 1000);
+    </script>
+  </head>
+  <body>
+
+<img src="file:///private/tmp/KindleAnalogClock_flatten.png" id="myImage" style="transform:rotate(270deg);"/>
+</body>
+</html>

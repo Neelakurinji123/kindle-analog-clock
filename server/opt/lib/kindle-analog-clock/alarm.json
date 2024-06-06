@@ -1,0 +1,6 @@
+{
+	"alarm": {
+		"1": {"False": {"time": "08:55", "timeout": "1m", "sound": "alarm-clock-sound.wav"}},
+		"2": {"False": {"time": "20:00", "timeout": "1m", "sound": "alarm-clock-sound.wav"}}
+	}
+}

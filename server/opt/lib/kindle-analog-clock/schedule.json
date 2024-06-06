@@ -1,0 +1,27 @@
+{
+	"schedule": {
+		"1": {"False": {
+			"time": "07:30",
+			"valid": "3m",
+			"task": {
+				"title": "Breakfast time!",
+				"items": {
+					"1": "muesli",
+					"2": "a cup of coffee"
+				}
+			}}
+		},
+		"2": {"False": {
+			"time": "11:58",
+			"valid": "3m",
+			"task": {
+				"title": "Lunch time!",
+				"items": {
+					"1": "sandwich",
+					"2": "green salad",
+					"3": "a cup of tea"
+				}
+			}}
+		}
+	}
+}
