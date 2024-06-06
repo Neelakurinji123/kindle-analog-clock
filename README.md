@@ -174,7 +174,7 @@ Or take a look at `/tmp/KindleAnalogClock_flatten.png`.
 
 #### c) final test
  
-`./clock.py` [config] # default config
+`./clock.py` 
 
 The program makes a PNG and display it on Kindle.
 
