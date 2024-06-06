@@ -163,7 +163,7 @@ All set up finished, then try it.
 
 `./clock.py svg`
 
-It will create a SVG file in working sirectory.
+It will create a SVG file in working directory.
 
 #### b) test 2: Output to display and a PNG file
 
