@@ -169,6 +169,45 @@ def wordwrap(text, length):
         w = text
     return w
 
+def get_song_info(entry):
+    log = '/tmp/kindle-analog-clock_music.log'
+
+    try:
+        song_log = check_output(["cat", log])
+        a = song_log.decode().split()
+    except Exception as e:
+        print(e)
+
+    title, artist, album, progress, song_time = str(), str(), str(), int(0), ['00', '00']
+    try:
+        title_location = [i for i, item in enumerate(a) if re.match('title:', item)]
+        artist_location = [i for i, item in enumerate(a) if re.match('artist:', item)]
+        album_location = [i for i, item in enumerate(a) if re.match('album:', item)]
+        end_location = [i for i, item in enumerate(a) if re.match('===', item)]
+        title = ' '.join(a[title_location[0]:artist_location[0]])
+        artist = ' '.join(a[artist_location[0]:album_location[0]])
+        album = ' '.join(a[album_location[0]:end_location[0]])
+        title = re.sub(r'&', '&amp;', title)
+        artist = re.sub(r'&', '&amp;', artist)
+        album = re.sub(r'&', '&amp;', album)
+        if entry['file_location'] == 'server':
+            progress = int(float(a[-7]) / float(a[-4]) * 100)
+            song_time = [str(f'{int(float(a[-7]) / 60):02d}'), str(f'{int(float(a[-7]) % 60):02d}')]
+        elif entry['file_location'] == 'kindle':
+            progress = int(float(a[-6]) / float(a[-3]) * 100)
+            song_time = [str(f'{int(float(a[-6]) / 60):02d}'), str(f'{int(float(a[-6]) % 60):02d}')]
+        title = re.sub(r'^title: ', '', title)
+        artist = re.sub(r'^artist: ', '', artist)
+        album = re.sub(r'^album: ', '', album)
+    except TypeError:
+            progress = 0
+            song_time = ['00', '00']
+    except Exception as e:
+        print(e)
+    return title, artist, album, progress, song_time
+
+
+
 def music(c, w, h, c_music, hr, mi, sec):
     music_svg = str()
     play = False
@@ -194,44 +233,14 @@ def music(c, w, h, c_music, hr, mi, sec):
                 except Exception as e:
                     print(e)
                 play.append(True)
+                title, artist, album, progress, song_time = get_song_info(entry)
             elif int(start_dt) <= int(now) <= int(stop_dt):
                 play.append(True)
+                title, artist, album, progress, song_time = get_song_info(entry)
             else:
                 play.append(False)
-
+                
             if True in play:
-                log = '/tmp/kindle-analog-clock_music.log'
-
-                try:
-                    song_log = check_output(["cat", log])
-                    a = song_log.decode().split()
-                except Exception as e:
-                    print(e)
-
-                title, artist, album, progress, song_time = str(), str(), str(), int(0), ['00', '00']
-                try:
-                    title_location = [i for i, item in enumerate(a) if re.match('title:', item)]
-                    artist_location = [i for i, item in enumerate(a) if re.match('artist:', item)]
-                    album_location = [i for i, item in enumerate(a) if re.match('album:', item)]
-                    end_location = [i for i, item in enumerate(a) if re.match('===', item)]
-                    title = ' '.join(a[title_location[0]:artist_location[0]])
-                    artist = ' '.join(a[artist_location[0]:album_location[0]])
-                    album = ' '.join(a[album_location[0]:end_location[0]])
-                    if entry['file_location'] == 'server':
-                        progress = int(float(a[-7]) / float(a[-4]) * 100)
-                        song_time = [str(f'{int(float(a[-7]) / 60):02d}'), str(f'{int(float(a[-7]) % 60):02d}')]
-                    elif entry['file_location'] == 'kindle':
-                        progress = int(float(a[-6]) / float(a[-3]) * 100)
-                        song_time = [str(f'{int(float(a[-6]) / 60):02d}'), str(f'{int(float(a[-6]) % 60):02d}')]
-                    title = re.sub(r'^title: ', '', title)
-                    artist = re.sub(r'^artist: ', '', artist)
-                    album = re.sub(r'^album: ', '', album)
-                except TypeError:
-                        progress = 0
-                        song_time = ['00', '00']
-                except Exception as e:
-                    print(e)
-
                 if env['display'] == 'circle':
                     #name = 'queue_music.svg'
                     #x, y = 350, 250
