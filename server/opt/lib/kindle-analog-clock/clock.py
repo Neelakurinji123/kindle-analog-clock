@@ -217,12 +217,12 @@ def music(c, w, h, c_music, hr, mi, sec):
                     title = ' '.join(a[title_location[0]:artist_location[0]])
                     artist = ' '.join(a[artist_location[0]:album_location[0]])
                     album = ' '.join(a[album_location[0]:end_location[0]])
-                    if music['file_location'] == 'server':
+                    if entry['file_location'] == 'server':
                         progress = int(float(a[-7]) / float(a[-4]) * 100)
-                        song_time = [f'{int(float(a[-7]) / 60):02d}', f'{int(float(a[-7]) % 60):02d}']
-                    elif music['file_location'] == 'kindle':
+                        song_time = [str(f'{int(float(a[-7]) / 60):02d}'), str(f'{int(float(a[-7]) % 60):02d}')]
+                    elif entry['file_location'] == 'kindle':
                         progress = int(float(a[-6]) / float(a[-3]) * 100)
-                        song_time = [f'{int(float(a[-6]) / 60):02d}', f'{int(float(a[-6]) % 60):02d}']
+                        song_time = [str(f'{int(float(a[-6]) / 60):02d}'), str(f'{int(float(a[-6]) % 60):02d}')]
                     title = re.sub(r'^title: ', '', title)
                     artist = re.sub(r'^artist: ', '', artist)
                     album = re.sub(r'^album: ', '', album)

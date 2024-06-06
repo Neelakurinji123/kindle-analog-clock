@@ -6,8 +6,6 @@ This repo is for a simple analog clock on old kindle 3.
 
 <img src="sample_images/screenshot.jpg" height="360" alt="Kindle 3 Screenshot" />&nbsp;
 
-<kbd><img src="sample_images/KindleAnalogClock_flatten.png" height="360" alt="Kindle 3 Screenshot" /></kbd>&nbsp;
-
 ## Requirements
 
 - Jailbroken Kindle 3: https://wiki.mobileread.com/wiki/Kindle_Hacks_Information
