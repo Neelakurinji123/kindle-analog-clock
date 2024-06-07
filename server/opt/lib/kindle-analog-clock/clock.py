@@ -199,7 +199,7 @@ def get_song_info(entry):
         artist_location = [i for i, item in enumerate(a) if re.match('artist:', item)]
         album_location = [i for i, item in enumerate(a) if re.match('album:', item)]
         end_location = [i for i, item in enumerate(a) if re.match('===', item)]
-        title = ' '.join(a[title_location[0]:artist_location[0]]) if title_location == list() and not artist_location == list() else 'n/a'
+        title = ' '.join(a[title_location[0]:artist_location[0]]) if not title_location == list() and not artist_location == list() else 'n/a'
         artist = ' '.join(a[artist_location[0]:album_location[0]]) if not artist_location == list() and not album_location == list() else 'n/a'
         album = ' '.join(a[album_location[0]:end_location[0]]) if not album_location == list() and not end_location == list() else 'n/a'
         # Fix encoding errors

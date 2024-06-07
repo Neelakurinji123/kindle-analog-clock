@@ -35,6 +35,9 @@ class KindleMusic:
                 else:
                     cmd = f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer http://192.168.2.1:8000/\\\"{n}\\\"\" | tee {log}'
                     proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
+            if self.repeat == True and not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
+                self.song_list = self.get_playlist()
+                self.play()
         elif location == 'kindle':
             for n in song_list:
                 if not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
@@ -42,6 +45,9 @@ class KindleMusic:
                 else:
                     cmd =  f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer \\\"{n}\\\"\" | tee {log}'
                     proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
+            if self.repeat == True and not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
+                self.song_list = self.get_playlist()
+                self.play()
 
     def get_playlist(self):
         playmode = self.playmode
