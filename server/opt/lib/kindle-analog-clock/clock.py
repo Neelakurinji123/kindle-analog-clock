@@ -6,6 +6,7 @@
 # Update     : 31 May 2024 
 
 import json, os, sys, re, io, math, socket
+from codecs import encode
 from pathlib import Path
 import time as t
 from datetime import datetime
@@ -31,13 +32,16 @@ def send_message(m):
         sock.sendall(bytes(m + "\n", "utf-8"))
     sock.close()
 
-def load_icon(x, y, name, scale=3.0):
+def load_icon(x, y, name, scale=3.0, mirror=False):
     path = 'images/'
     icon = path + name
     with open(icon, 'r') as f:
         a = f.read()
     f.close()
-    b = SVGtools.transform('({},0,0,{},{},{})'.format(scale, scale, x, y), a).svg()
+    if mirror == True:
+        b = SVGtools.transform('({},0,0,{},{},{})'.format(-scale, scale, x, y), a).svg()
+    else:
+        b = SVGtools.transform('({},0,0,{},{},{})'.format(scale, scale, x, y), a).svg()
     #b = SVGtools.transform('(3.0,0,0,3.0,{},{})'.format(x, y), a).svg()
     return b
 
@@ -127,20 +131,23 @@ Z" fill="{color}" transform="rotate({rotate}, {center_x}, {center_y})"/>
             color=color, rotate=rotate, center_x=(w * 0.5), center_y=(h * 0.5))       
         return a
 
-def alarm(c_alarm, hr, mi, sec):
+def alarm(c, c_alarm, hr, mi, sec):
     alarm_svg = str()
+    alarm_run = None
+    interval = int(c['set_interval'])
     s = [ list(x.items())[0][0] for x in c_alarm.values()]
     p = [ list(x.items())[0] for x in c_alarm.values()]
     for i, n in enumerate(p, 1):
         if n[0] == 'True':
             entry = n[1]
             year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
-            now = datetime(year, mon, mday, hr, mi, sec).timestamp()
+            now = int(datetime(year, mon, mday, hr, mi, sec).timestamp())
             [start_hr, start_mi] = list(map(int, entry['time'].split(':')))
-            start_dt = datetime(year, mon, mday, start_hr, start_mi).timestamp()
+            start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
             timeout = int(re.sub(r'm$', '', entry['timeout']))
-            stop_dt = start_dt + int(timeout) * 60
-            if int(start_dt) == int(now):
+            stop_dt = start_dt + timeout * 60
+            if start_dt == now:
+                alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 350, 250
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0)
@@ -148,19 +155,27 @@ def alarm(c_alarm, hr, mi, sec):
                     send_message('alarm#{}'.format(i))
                 except Exception as e:
                     print(e)
-            elif int(start_dt) <= int(now) <= int(stop_dt):
+            elif start_dt <= now <= stop_dt and ((now - start_dt) / interval) % 2 == 1:
+                alarm_run = True
+                name = 'bell_ringing_2.svg'
+                x, y = 450, 250
+                alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0, mirror=True)
+            elif start_dt <= now <= stop_dt:
+                alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 350, 250
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0)
-            elif int(now) == int(stop_dt):
+            elif now == stop_dt:
+                alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 0, 5          
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0)
             else:
+                alarm_run = False
                 name = 'bell.svg'
                 x, y = 0, 5          
                 alarm_svg = load_icon(x=x, y=y, name=name)
-    return alarm_svg
+    return alarm_svg, alarm_run
 
 def wordwrap(text, length):
     if len(text) >= length:
@@ -184,12 +199,18 @@ def get_song_info(entry):
         artist_location = [i for i, item in enumerate(a) if re.match('artist:', item)]
         album_location = [i for i, item in enumerate(a) if re.match('album:', item)]
         end_location = [i for i, item in enumerate(a) if re.match('===', item)]
-        title = ' '.join(a[title_location[0]:artist_location[0]])
-        artist = ' '.join(a[artist_location[0]:album_location[0]])
-        album = ' '.join(a[album_location[0]:end_location[0]])
-        title = re.sub(r'&', '&amp;', title)
-        artist = re.sub(r'&', '&amp;', artist)
-        album = re.sub(r'&', '&amp;', album)
+        title = ' '.join(a[title_location[0]:artist_location[0]]) if title_location == list() and not artist_location == list() else 'n/a'
+        artist = ' '.join(a[artist_location[0]:album_location[0]]) if not artist_location == list() and not album_location == list() else 'n/a'
+        album = ' '.join(a[album_location[0]:end_location[0]]) if not album_location == list() and not end_location == list() else 'n/a'
+        # Fix encoding errors
+        def fix_encode(n):
+            #out = encode(n, encoding='latin_1', errors='replace')
+            #n = out.decode('latin_1')
+            n = re.sub(r'&', '&amp;', n)
+            return n
+        title = fix_encode(title)
+        artist = fix_encode(artist)
+        album = fix_encode(album)
         if entry['file_location'] == 'server':
             progress = int(float(a[-7]) / float(a[-4]) * 100)
             song_time = [str(f'{int(float(a[-7]) / 60):02d}'), str(f'{int(float(a[-7]) % 60):02d}')]
@@ -206,9 +227,7 @@ def get_song_info(entry):
         print(e)
     return title, artist, album, progress, song_time
 
-
-
-def music(c, w, h, c_music, hr, mi, sec):
+def music(c, w, h, c_music, hr, mi, sec, alarm_run, task_run):
     music_svg = str()
     play = False
     env = c_music['env']
@@ -240,7 +259,7 @@ def music(c, w, h, c_music, hr, mi, sec):
             else:
                 play.append(False)
                 
-            if True in play:
+            if True in play and not task_run == True and not alarm_run == True:
                 if env['display'] == 'circle':
                     #name = 'queue_music.svg'
                     #x, y = 350, 250
@@ -295,12 +314,12 @@ def message(title, items):
         y += 50
     return svg
 
-def schedule(c_schedule, hr, mi, sec):
+def schedule(c_schedule, hr, mi, sec, alarm_run):
     schedule_svg = str()
     s = [ list(x.items())[0][0] for x in c_schedule.values()]
     year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
     now = datetime(year, mon, mday, hr, mi, sec).timestamp()
-    task = None
+    task_run = None
     task_position = str()
     if "True" in s:
         for d in c_schedule.values():
@@ -312,33 +331,33 @@ def schedule(c_schedule, hr, mi, sec):
                 start_dt = datetime(year, mon, mday, start_hr, start_mi).timestamp()
                 stop_dt = start_dt + valid * 60
                 if int(start_dt) == int(now):
-                    task = True
+                    task_run = True
                     task_position = 'start'
                 elif int(start_dt) <= int(now) < int(stop_dt):
-                    task = True
+                    task_run = True
                 elif int(now) == int(stop_dt):
-                    task = True
+                    task_run = True
                     task_position = 'end'
                 else:
-                    task = False    
-    if task == True:
+                    task_run = False    
+    if task_run == True and not alarm_run == True:
         name = 'task_done.svg'
-        x, y = 15, 270
+        x, y = 13, 270
         title = v['task']['title']
         items = v['task']['items']
         schedule_svg = load_icon(x=x, y=y, name=name)
         schedule_svg += message(title, items)
-    elif task == False:
+    elif task_run == False:
         name = 'task_done.svg'
-        x, y = 15, 270          
+        x, y = 13, 270          
         schedule_svg = load_icon(x=x, y=y, name=name)
         task = False
     else:
         schedule_svg = str()
         task = None
-    return schedule_svg, task, task_position
+    return schedule_svg, task_run, task_position
 
-def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_display, **kw):   
+def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_display, flag_png, **kw):   
     while True:
         epoch = int(datetime.now().timestamp())
         if not epoch % c['set_interval'] == 0:
@@ -384,18 +403,18 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             else:
                 date_svg = str()
             # Alarm
-            alarm_svg = alarm(c_alarm=c_alarm, hr=hr, mi=mi, sec=sec)
-            #alarm_svg = str()
-            # Music
-            music_svg, play = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec)
-            #music_svg = str()
+            alarm_svg, alarm_run = alarm(c=c, c_alarm=c_alarm, hr=hr, mi=mi, sec=sec)
             # Schedule
-            schedule_svg, task, task_position = schedule(c_schedule, hr=hr, mi=mi, sec=sec)
-            # SVG output
-            if c_music['env']['display'] == 'circle' and True in play:
-                svg = clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
-            elif task == True:
+            schedule_svg, task_run, task_position = schedule(c_schedule, hr=hr, mi=mi, sec=sec, alarm_run=alarm_run)
+            # Music
+            music_svg, play = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec, alarm_run=alarm_run, task_run=task_run)
+            # SVG output; priority: alarm > task > music > clock 
+            if alarm_run == True:
+                svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
+            elif task_run == True:
                 svg = alarm_svg + music_svg + schedule_svg + date_svg
+            elif c_music['env']['display'] == 'circle' and True in play:
+                svg = clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
             else:
                 svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
             svg = svg_format(svg)
@@ -416,7 +435,7 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
                     if flag_display == True:
                         display(img)
                 img.close()
-            if not flag_display == True:
+            if not flag_display == True and not flag_png == True:
                 cmd = f'scp /tmp/{flatten_png} root@192.168.2.2:/tmp'
                 proc2 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE).wait()
                 if task_position == 'start' or task_position == 'end':
@@ -427,7 +446,7 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             t.sleep(0.5)
      
 if __name__ == "__main__":
-    flag_svg, flag_config, flag_display = False, False, False
+    flag_svg, flag_config, flag_display, flag_png = False, False, False, False
     if 'svg' in sys.argv:
         flag_svg = True
         sys.argv.remove('svg')
@@ -437,6 +456,9 @@ if __name__ == "__main__":
     elif 'display' in sys.argv:
         flag_display = True
         sys.argv.remove('display')
+    elif 'png' in sys.argv:
+        flag_png = True
+        sys.argv.remove('png')
     # custom setting    
     if len(sys.argv) > 1:
         setting = sys.argv[1]
@@ -464,7 +486,7 @@ if __name__ == "__main__":
         
     w, h = (800, 600) if c['layout'] == 'landscape' else (600, 800)
     kw = {'c': c, 'c_alarm': c_alarm, 'c_music': c_music, 'c_schedule': c_schedule, 'w': w, 'h': h,
-                'flag_svg': flag_svg, 'flag_config': flag_config, 'flag_display': flag_display}
+                'flag_svg': flag_svg, 'flag_config': flag_config, 'flag_display': flag_display, 'flag_png': flag_png}
 
     with open('/tmp/kindle-analog-clock.pid', 'w') as f:
         f.write(str(os.getpid()))
