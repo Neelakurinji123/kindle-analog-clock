@@ -27,10 +27,14 @@ class KindleMusic:
         location = self.location
         song_list = self.song_list
         log = '/tmp/kindle-analog-clock_music.log'
-        #start = int(t.time())
+        # reset mplayer
+        cmd = f'ssh root@192.168.2.2 \"kill \$(pidof mplayer)\"'
+        proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
         if location == 'server':
             for n in song_list:
                 if not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
+                    cmd = f'ssh root@192.168.2.2 \"kill \$(pidof mplayer)\"'
+                    proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
                     exit(0) 
                 else:
                     cmd = f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer http://192.168.2.1:8000/\\\"{n}\\\"\" | tee {log}'
@@ -41,6 +45,8 @@ class KindleMusic:
         elif location == 'kindle':
             for n in song_list:
                 if not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
+                    cmd = f'ssh root@192.168.2.2 \"kill \$(pidof mplayer)\"'
+                    proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
                     exit(0)
                 else:
                     cmd =  f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer \\\"{n}\\\"\" | tee {log}'
