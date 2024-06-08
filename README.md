@@ -78,7 +78,8 @@ setting file: `music.json`
 - playlist: a directory name under `(working directory)/music`
 - playmode: one of `normal`, `reverse` and `shuffle` 
 - repeat: (WIP)
-- file_location: `server` or `kindle`(WIP)
+- file_location: `server` or `kindle`
+- display: `circle` or `bar`
 
 Note:
 
@@ -89,9 +90,10 @@ Note:
 - Getting song info is dirty hack, it is not guaranteed that it works all the time.
 
   
-<kbd><img src="sample_images/KindleAnalogClock_flatten_music.png" height="360" alt="Kindle 3 Screenshot" /></kbd>&nbsp;
+<kbd><img src="sample_images/KindleAnalogClock_flatten_music_circle.png" height="360" alt="progress - circle" />*circle*</kbd>&nbsp;
  
- 
+<kbd><img src="sample_images/KindleAnalogClock_flatten_music_bar.png" height="360" alt="progress - bar" />*bar*</kbd>&nbsp; 
+
 #### d) task config
 
 ##### setting

@@ -68,7 +68,7 @@ class transform:
         self.obj = obj
 
     def svg(self):
-        return '<g transform="matrix{}">{}</g>\n'.format(self.matrix, self.obj)
+        return f'<g transform="matrix{self.matrix}">{self.obj}</g>\n'
 
 
 class polyline:
@@ -77,7 +77,7 @@ class polyline:
         self.style = style
 
     def svg(self):
-        return '<polyline points="{}" style="{}"/>\n'.format(self.points, self.style)
+        return f'<polyline points="{self.points}" style="{self.style}"/>\n'
 
 
 class rect:

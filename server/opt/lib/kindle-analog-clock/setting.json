@@ -4,6 +4,7 @@
 		"set_interval": 5,
 		"timezone": "local",
 		"show_date": "True",
+		"encoding": "iso-8859-1",
 		"color_sec": "rgb(0,0,0)",
 		"color_min": "rgb(0,0,0)",
 		"color_hour": "rgb(0,0,0)",

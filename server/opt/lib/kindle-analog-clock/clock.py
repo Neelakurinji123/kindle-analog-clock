@@ -32,6 +32,17 @@ def send_message(m):
         sock.sendall(bytes(m + "\n", "utf-8"))
     sock.close()
 
+def wordwrap(text, length):
+    if len(text) >= length:
+        w = text[0:(length - 2)] + '..'
+    else:
+        w = text
+    return w
+
+def reset_display():
+    cmd = f'ssh root@192.168.2.2 \"cd /tmp; /usr/sbin/eips -c\"'
+    proc = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
+
 def load_icon(x, y, name, scale=3.0, mirror=False):
     path = 'images/'
     icon = path + name
@@ -42,19 +53,20 @@ def load_icon(x, y, name, scale=3.0, mirror=False):
         b = SVGtools.transform('({},0,0,{},{},{})'.format(-scale, scale, x, y), a).svg()
     else:
         b = SVGtools.transform('({},0,0,{},{},{})'.format(scale, scale, x, y), a).svg()
-    #b = SVGtools.transform('(3.0,0,0,3.0,{},{})'.format(x, y), a).svg()
     return b
 
-def svg_format(svg):
-    layout = 'landscape'
-    t_zone = str()
-    w, h = (800, 600) if layout == 'landscape' else (600, 800) 
-    a = '<?xml version="1.0" encoding="' + 'iso-8859-1' + '"?>\n'
-    a += '<svg xmlns="http://www.w3.org/2000/svg" height="{}" width="{}" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">\n'.format(h, w)
-    a += svg
-    a += '</svg>\n'
-    #a += '<g font-family="' + 'Droid Sans' + '">\n'   
-    return a
+def create_svg(c, _svg):
+    #layout = 'landscape'
+    #w, h = (800, 600) if layout == 'landscape' else (600, 800)
+    w, h = 800, 600
+    encoding = c['encoding']
+    svg = f'''<?xml version="1.0" encoding="{encoding}"?>
+<svg xmlns="http://www.w3.org/2000/svg" height="{h}" width="{w}" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">'''
+    svg += '\n'
+    svg += _svg
+    #svg += '<g font-family="' + 'Droid Sans' + '">\n'
+    svg += '\n</svg>'
+    return svg
 
 class DrawClock:
     def __init__(self, **kw2):
@@ -119,24 +131,20 @@ class DrawClock:
         innerEndX = innerStartX - innerRadiusX
         innerEndY = innerStartY
         color = self.color
-        a = '''<path d="M {start_x} {start_y}
-A {radius_x} {radius_y}, 0, 0, 0, {radius_end_x} {radius_end_y}
-L {_x} {_y}
-A {inner_radius_x} {inner_radius_y}, 0, 0, 1, {inner_start_x} {inner_start_y}
-Z" fill="{color}" transform="rotate({rotate}, {center_x}, {center_y})"/>
-'''.format(start_x=startX, start_y=startY, radius_x=radiusX, radius_y=radiusY,
-            radius_end_x=radiusEndX, radius_end_y=radiusEndY, _x=innerRadiusEndX,
-            _y=innerRadiusEndY, inner_radius_x=innerRadiusX, inner_radius_y=innerRadiusY,
-            inner_start_x=innerStartX, inner_start_y=innerStartY,
-            color=color, rotate=rotate, center_x=(w * 0.5), center_y=(h * 0.5))       
+        a = f'''<path d="M {startX} {startY}
+A {radiusX} {radiusY}, 0, 0, 0, {radiusEndX} {radiusEndY}
+L {innerRadiusEndX} {innerRadiusEndY}
+A {innerRadiusX} {innerRadiusY}, 0, 0, 1, {innerStartX} {innerStartY}
+Z" fill="{color}" transform="rotate({rotate}, {centerX}, {centerY})"/>
+'''    
         return a
 
 def alarm(c, c_alarm, hr, mi, sec):
     alarm_svg = str()
     alarm_run = None
     interval = int(c['set_interval'])
-    s = [ list(x.items())[0][0] for x in c_alarm.values()]
-    p = [ list(x.items())[0] for x in c_alarm.values()]
+    s = [list(x.items())[0][0] for x in c_alarm.values()]
+    p = [list(x.items())[0] for x in c_alarm.values()]
     for i, n in enumerate(p, 1):
         if n[0] == 'True':
             entry = n[1]
@@ -155,21 +163,25 @@ def alarm(c, c_alarm, hr, mi, sec):
                     send_message('alarm#{}'.format(i))
                 except Exception as e:
                     print(e)
+                return alarm_svg, alarm_run
             elif start_dt <= now <= stop_dt and ((now - start_dt) / interval) % 2 == 1:
                 alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 450, 250
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0, mirror=True)
+                return alarm_svg, alarm_run
             elif start_dt <= now <= stop_dt:
                 alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 350, 250
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0)
+                return alarm_svg, alarm_run
             elif now == stop_dt:
                 alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 0, 5          
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0)
+                return alarm_svg, alarm_run
             else:
                 alarm_run = False
                 name = 'bell.svg'
@@ -177,66 +189,103 @@ def alarm(c, c_alarm, hr, mi, sec):
                 alarm_svg = load_icon(x=x, y=y, name=name)
     return alarm_svg, alarm_run
 
-def wordwrap(text, length):
-    if len(text) >= length:
-        w = text[0:(length - 2)] + '..'
-    else:
-        w = text
-    return w
 
-def get_song_info(entry):
-    log = '/tmp/kindle-analog-clock_music.log'
 
-    try:
-        song_log = check_output(["cat", log])
-        a = song_log.decode().split()
-    except Exception as e:
-        print(e)
-
-    title, artist, album, progress, song_time = str(), str(), str(), int(0), ['00', '00']
-    try:
-        title_location = [i for i, item in enumerate(a) if re.match('title:', item)]
-        artist_location = [i for i, item in enumerate(a) if re.match('artist:', item)]
-        album_location = [i for i, item in enumerate(a) if re.match('album:', item)]
-        end_location = [i for i, item in enumerate(a) if re.match('===', item)]
-        title = ' '.join(a[title_location[0]:artist_location[0]]) if not title_location == list() and not artist_location == list() else 'n/a'
-        artist = ' '.join(a[artist_location[0]:album_location[0]]) if not artist_location == list() and not album_location == list() else 'n/a'
-        album = ' '.join(a[album_location[0]:end_location[0]]) if not album_location == list() and not end_location == list() else 'n/a'
-        # Fix encoding errors
-        def fix_encode(n):
-            #out = encode(n, encoding='latin_1', errors='replace')
-            #n = out.decode('latin_1')
-            n = re.sub(r'&', '&amp;', n)
-            return n
-        title = fix_encode(title)
-        artist = fix_encode(artist)
-        album = fix_encode(album)
-        if entry['file_location'] == 'server':
-            progress = int(float(a[-7]) / float(a[-4]) * 100)
-            song_time = [str(f'{int(float(a[-7]) / 60):02d}'), str(f'{int(float(a[-7]) % 60):02d}')]
-        elif entry['file_location'] == 'kindle':
-            progress = int(float(a[-6]) / float(a[-3]) * 100)
-            song_time = [str(f'{int(float(a[-6]) / 60):02d}'), str(f'{int(float(a[-6]) % 60):02d}')]
-        title = re.sub(r'^title: ', '', title)
-        artist = re.sub(r'^artist: ', '', artist)
-        album = re.sub(r'^album: ', '', album)
-    except TypeError:
-            progress = 0
-            song_time = ['00', '00']
-    except Exception as e:
-        print(e)
-    return title, artist, album, progress, song_time
-
-def music(c, w, h, c_music, hr, mi, sec, alarm_run, task_run):
+def music(c, w, h, c_music, hr, mi, sec):
     music_svg = str()
-    play = False
     env = c_music['env']
     music = c_music['music']
-    play = list()
+    music_run = None
     year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
     now = datetime(year, mon, mday, hr, mi, sec).timestamp()
     s = [ list(x.items())[0][0] for x in music.values()]
     p = [ list(x.items())[0] for x in music.values()]
+
+    def get_song_info(entry):
+        log = '/tmp/kindle-analog-clock_music.log'
+
+        try:
+            song_log = check_output(["cat", log])
+            a = song_log.decode().split()
+        except Exception as e:
+            print(e)
+
+        title, artist, album, progress, song_time = str(), str(), str(), int(0), ['00', '00']
+        try:
+            title_location = [i for i, item in enumerate(a) if re.match('title:', item)]
+            artist_location = [i for i, item in enumerate(a) if re.match('artist:', item)]
+            album_location = [i for i, item in enumerate(a) if re.match('album:', item)]
+            end_location = [i for i, item in enumerate(a) if re.match('===', item)]
+            title = ' '.join(a[title_location[0]:artist_location[0]]) if not title_location == list() and not artist_location == list() else 'n/a'
+            artist = ' '.join(a[artist_location[0]:album_location[0]]) if not artist_location == list() and not album_location == list() else 'n/a'
+            album = ' '.join(a[album_location[0]:end_location[0]]) if not album_location == list() and not end_location == list() else 'n/a'
+            # Fix encoding errors
+            def fix_encode(n):
+                #out = encode(n, encoding='latin_1', errors='replace')
+                #n = out.decode('latin_1')
+                n = re.sub(r'&', '&amp;', n)
+                return n
+            title = fix_encode(title)
+            artist = fix_encode(artist)
+            album = fix_encode(album)
+            if entry['file_location'] == 'server':
+                progress = int(float(a[-7]) / float(a[-4]) * 100)
+                song_time = [str(f'{int(float(a[-7]) / 60):02d}'), str(f'{int(float(a[-7]) % 60):02d}')]
+            elif entry['file_location'] == 'kindle':
+                progress = int(float(a[-6]) / float(a[-3]) * 100)
+                song_time = [str(f'{int(float(a[-6]) / 60):02d}'), str(f'{int(float(a[-6]) % 60):02d}')]
+            title = re.sub(r'^title: ', '', title)
+            artist = re.sub(r'^artist: ', '', artist)
+            album = re.sub(r'^album: ', '', album)
+        except TypeError:
+                progress = 0
+                song_time = ['00', '00']
+        except Exception as e:
+            print(e)
+        return title, artist, album, progress, song_time
+    
+    def create_music_svg(w, h, env, title, artist, album, progress, song_time, *args):
+        if env['display'] == 'circle':
+            name = 'speaker.svg'
+            x, y = 358, 257
+            svg = load_icon(x=x, y=y, name=name, scale=5.4)
+            kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_music_radius'], 'radiusY': c['stroke_music_radius'],
+                    'innerRadiusX': c['stroke_music_inner_radius'], 'innerRadiusY': c['stroke_music_inner_radius'],
+                    'v': progress, 'step': 99, 'color': c['color_music']}
+            progress_circle = DrawClock(**kw2)
+            svg += progress_circle.svg()
+            x, y = 25, 575
+            font_size = 25
+            length = 35
+            svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(title, length)).svg()
+            #y += 30
+            #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
+            #y += 30
+            #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(album, length), stroke='rgb(128,128,128)').svg()
+            x, y = 785, 55
+            font_size = 45
+            svg += SVGtools.text(anchor='end', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
+        elif env['display'] == 'bar':
+            name = 'speaker.svg'
+            x, y = 358, 257
+            svg = load_icon(x=x, y=y, name=name, scale=5.4)
+            style = 'stroke:rgb(128,128,128);stroke-width:20px;'
+            svg += SVGtools.line(x1=0, x2=(progress / 99 * 800), y1=600, y2=600, style=style).svg()
+            x, y = 25, 585
+            font_size = 25
+            length = 35
+            svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(title, length)).svg()
+            #y += 30
+            #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
+            #y += 30
+            #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(album, length), stroke='rgb(128,128,128)').svg()
+            x, y = 25, 530
+            #x, y = 785, 55
+            font_size = 45
+            svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
+            #svg += SVGtools.text(anchor='end', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
+        return svg
+    
     for i, n in enumerate(p, 1):
         if n[0] == 'True':
             entry = n[1]
@@ -245,85 +294,59 @@ def music(c, w, h, c_music, hr, mi, sec, alarm_run, task_run):
             start_dt = datetime(year, mon, mday, start_hr, start_mi).timestamp()
             stop_dt = datetime(year, mon, mday, stop_hr, stop_mi).timestamp()
             timeout = str(stop_dt - start_dt)
-
             if int(start_dt) == int(now):
                 try:
                     send_message('music#{}#{}'.format(i, timeout))
                 except Exception as e:
                     print(e)
-                play.append(True)
-                title, artist, album, progress, song_time = get_song_info(entry)
+                music_run = True
+                args = get_song_info(entry)
+                music_svg = create_music_svg(w, h, env, *args)
+                return music_svg, music_run
             elif int(start_dt) <= int(now) <= int(stop_dt):
-                play.append(True)
-                title, artist, album, progress, song_time = get_song_info(entry)
+                music_run = True
+                args = get_song_info(entry)
+                music_svg = create_music_svg(w, h, env, *args)
+                return music_svg, music_run
             else:
-                play.append(False)
-                
-            if True in play and not task_run == True and not alarm_run == True:
-                if env['display'] == 'circle':
-                    #name = 'queue_music.svg'
-                    #x, y = 350, 250
-                    #music_svg = load_icon(x=x, y=y, name=name, scale=4.0)
-                    name = 'speaker.svg'
-                    x, y = 358, 257
-                    music_svg = load_icon(x=x, y=y, name=name, scale=5.4)
-                    kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_music_radius'], 'radiusY': c['stroke_music_radius'],
-                            'innerRadiusX': c['stroke_music_inner_radius'], 'innerRadiusY': c['stroke_music_inner_radius'],
-                            'v': progress, 'step': 99, 'color': c['color_music']}
-                    progress_circle = DrawClock(**kw2)
-                    music_svg += progress_circle.svg()
-                    x, y = 25, 575
-                    font_size = 25
-                    length = 35
-                    music_svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(title, length)).svg()
-                    #y += 30
-                    #music_svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
-                    #y += 30
-                    #music_svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(album, length), stroke='rgb(128,128,128)').svg()
-                    x, y = 785, 55
-                    font_size = 45
-                    music_svg += SVGtools.text(anchor='end', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
-                elif env['display'] == 'bar':
-                    name = 'queue_music.svg'
-                    x, y = 0, 510          
-                    music_svg = load_icon(x=x, y=y, name=name)
-                    style = 'stroke:rgb(128,128,128);stroke-width:10px;'
-                    music_svg += SVGtools.line(x1=0, x2=(800 / 100 * progress), y1=595, y2=595, style=style).svg()
-                    x, y = 300, 250
-                    font_size = 25
-                    length = 15
-                    music_svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v='Title: ' + wordwrap(title, length)).svg()
-                    y += 30
-                    music_svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v='Artist: ' + wordwrap(artist, length)).svg()
-                    y += 30
-                    music_svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v='Album: ' + wordwrap(album, length)).svg()
-            elif not True in play:
+                music_run = False
                 name = 'queue_music.svg'
                 x, y = 0, 530          
                 music_svg = load_icon(x=x, y=y, name=name)
-    return music_svg, play
 
-def message(title, items):
-    x, y = 400, 150
-    font_size = 60
-    svg = SVGtools.text(anchor='middle', fontsize=font_size, x=x, y=y, v=title).svg()
-    x, y = 175, 240
-    font_size = 35
-    for key, value in items.items():
-        svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v='* ' + value).svg()
-        y += 50
-    return svg
+    return music_svg, music_run
 
-def schedule(c_schedule, hr, mi, sec, alarm_run):
+def schedule(c_schedule, hr, mi, sec):
     schedule_svg = str()
+    task_run = None
     s = [ list(x.items())[0][0] for x in c_schedule.values()]
     year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
     now = datetime(year, mon, mday, hr, mi, sec).timestamp()
-    task_run = None
-    task_position = str()
+
+    def message(title, items):
+        x, y = 400, 150
+        font_size = 60
+        svg = str()
+        svg = SVGtools.text(anchor='middle', fontsize=font_size, x=x, y=y, v=title).svg()
+        x, y = 175, 240
+        font_size = 35
+        for key, value in items.items():
+            svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v='* ' + value).svg()
+            y += 50
+        return svg
+
+    def schedule_icon(v):
+        name = 'task_done.svg'
+        x, y = 13, 270
+        svg = str()
+        svg = load_icon(x=x, y=y, name=name)
+        return svg
+
     if "True" in s:
         for d in c_schedule.values():
             b, v = list(d.items())[0]
+            title = v['task']['title']
+            items = v['task']['items']
             if b == 'True':
                 sch_hr, sch_mi = v['time'].split(':')
                 valid = int(re.sub(r'm$', '', v['valid']))
@@ -332,30 +355,27 @@ def schedule(c_schedule, hr, mi, sec, alarm_run):
                 stop_dt = start_dt + valid * 60
                 if int(start_dt) == int(now):
                     task_run = True
-                    task_position = 'start'
+                    task = 'start'
+                    reset_display()
+                    schedule_svg = schedule_icon(v)
+                    schedule_svg += message(title, items)
+                    return schedule_svg, task_run
                 elif int(start_dt) <= int(now) < int(stop_dt):
                     task_run = True
+                    schedule_svg = schedule_icon(v)
+                    schedule_svg += message(title, items)
+                    return schedule_svg, task_run  
                 elif int(now) == int(stop_dt):
                     task_run = True
-                    task_position = 'end'
+                    task = 'end'
+                    reset_display()
+                    schedule_svg = schedule_icon(v)
+                    schedule_svg += message(title, items)
+                    return schedule_svg, task_run
                 else:
-                    task_run = False    
-    if task_run == True and not alarm_run == True:
-        name = 'task_done.svg'
-        x, y = 13, 270
-        title = v['task']['title']
-        items = v['task']['items']
-        schedule_svg = load_icon(x=x, y=y, name=name)
-        schedule_svg += message(title, items)
-    elif task_run == False:
-        name = 'task_done.svg'
-        x, y = 13, 270          
-        schedule_svg = load_icon(x=x, y=y, name=name)
-        task = False
-    else:
-        schedule_svg = str()
-        task = None
-    return schedule_svg, task_run, task_position
+                    task_run = False
+                    schedule_svg = schedule_icon(v)  
+    return schedule_svg, task_run
 
 def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_display, flag_png, **kw):   
     while True:
@@ -405,19 +425,21 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             # Alarm
             alarm_svg, alarm_run = alarm(c=c, c_alarm=c_alarm, hr=hr, mi=mi, sec=sec)
             # Schedule
-            schedule_svg, task_run, task_position = schedule(c_schedule, hr=hr, mi=mi, sec=sec, alarm_run=alarm_run)
+            schedule_svg, task_run = schedule(c_schedule, hr=hr, mi=mi, sec=sec)
             # Music
-            music_svg, play = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec, alarm_run=alarm_run, task_run=task_run)
-            # SVG output; priority: alarm > task > music > clock 
-            if alarm_run == True:
-                svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
-            elif task_run == True:
-                svg = alarm_svg + music_svg + schedule_svg + date_svg
-            elif c_music['env']['display'] == 'circle' and True in play:
-                svg = clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
+            music_svg, music_run = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec)
+            # SVG output; priority: task > alarm > music > clock
+            if task_run == True:
+                _svg = schedule_svg + date_svg 
+            elif alarm_run == True:
+                _svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + date_svg
+            elif c_music['env']['display'] == 'circle' and music_run == True:
+                _svg = clock_mi.svg() + clock_hr.svg() + music_svg + date_svg
+            elif c_music['env']['display'] == 'bar' and music_run == True:
+                _svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + music_svg + date_svg
             else:
-                svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
-            svg = svg_format(svg)
+                _svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
+            svg = create_svg(c, _svg)
             if flag_svg == True:
                 with open('analog_clock.svg', 'w') as f:
                     f.write(svg)
@@ -438,9 +460,6 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             if not flag_display == True and not flag_png == True:
                 cmd = f'scp /tmp/{flatten_png} root@192.168.2.2:/tmp'
                 proc2 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE).wait()
-                if task_position == 'start' or task_position == 'end':
-                    cmd = f'ssh root@192.168.2.2 \"cd /tmp; /usr/sbin/eips -c\"'
-                    proc2_5 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
                 cmd = f'ssh root@192.168.2.2 \"cd /tmp; /usr/sbin/eips -g {flatten_png}\"'
                 proc3 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
             t.sleep(0.5)
