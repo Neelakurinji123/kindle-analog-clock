@@ -49,7 +49,7 @@ def alarm_play(c, queue):
     a = c_alarm[str(num)]
     entry = list(a.values())[0]
     alarm = KindleAlarm(**entry)
-    proc_alarm = Process(target=alarm.play(), args=())
+    proc_alarm = Process(target=alarm.play(), alarm_args=())
     proc_alarm.start()
 
 def main(c_music, c_alarm):

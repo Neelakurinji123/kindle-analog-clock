@@ -27,33 +27,57 @@ class KindleMusic:
         location = self.location
         song_list = self.song_list
         log = '/tmp/kindle-analog-clock_music.log'
-        # reset mplayer
-        cmd = f'ssh root@192.168.2.2 \"kill \$(pidof mplayer)\"'
-        proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
+        
+        def reset_mplayer():
+            cmd = f'ssh root@192.168.2.2 \"kill `pidof mplayer`\"'
+            proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
+
         if location == 'server':
             for n in song_list:
                 if not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
-                    cmd = f'ssh root@192.168.2.2 \"kill \$(pidof mplayer)\"'
-                    proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
-                    exit(0) 
+                    try:
+                        reset_mplayer()
+                        exit(0)
+                    except Exception as e:
+                        print(e)
+                        exit(1) 
                 else:
-                    cmd = f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer http://192.168.2.1:8000/\\\"{n}\\\"\" | tee {log}'
+                    reset_mplayer()
+                    # Save music file name
+                    with open('/tmp/kindle-analog-clock-KindleAudio_file', 'w') as f:
+                        f.write(n)
+                    f.close()
+                    cmd = f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer http://192.168.2.1:8000/\'{n}\'\" | tee {log}'
                     proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
-            if self.repeat == True and not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
-                self.song_list = self.get_playlist()
-                self.play()
         elif location == 'kindle':
             for n in song_list:
                 if not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
-                    cmd = f'ssh root@192.168.2.2 \"kill \$(pidof mplayer)\"'
-                    proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
-                    exit(0)
+                    try:
+                        reset_mplayer()
+                        exit(0)
+                    except Exception as e:
+                        print(e)
+                        exit(1)
                 else:
-                    cmd =  f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer \\\"{n}\\\"\" | tee {log}'
+                    reset_mplayer()
+                    # Save music file name
+                    with open('/tmp/kindle-analog-clock-KindleAudio_file', 'w') as f:
+                        f.write(n)
+                    f.close()
+                    cmd =  f'ssh root@192.168.2.2 \"/mnt/us/mplayer/mplayer \'{n}\'\" | tee {log}'
                     proc = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
-            if self.repeat == True and not self.timeout == -1 and self.timeout < int(t.time()) - self.start:
-                self.song_list = self.get_playlist()
-                self.play()
+
+        if self.repeat == 'True':
+            #reset_mplayer()
+            self.song_list = self.get_playlist()
+            self.play()
+        else:
+            try:
+                reset_mplayer()
+                exit(0)
+            except Exception as e:
+                print(e)
+                exit(1)
 
     def get_playlist(self):
         playmode = self.playmode
@@ -66,7 +90,7 @@ class KindleMusic:
             song_list = r.decode().split('\n')
             if playmode == 'normal':
                 pass
-            if playmode == 'reverse':
+            elif playmode == 'reverse':
                 song_list.reverse()
             elif playmode == 'shuffle':
                 random.shuffle(song_list)
@@ -76,7 +100,7 @@ class KindleMusic:
             song_list = r.decode().split('\n')
             if playmode == 'normal':
                 pass
-            if playmode == 'reverse':
+            elif playmode == 'reverse':
                 song_list.reverse()
             elif playmode == 'shuffle':
                 random.shuffle(song_list)
@@ -89,11 +113,13 @@ class KindleAlarm:
 
     def play(self):
         now = int(t.time())
-        cmd = f'ssh root@192.168.2.2 \"curl http://192.168.2.1:8000/sounds/{self.sound} | aplay\"'
-        while t.time() < now + self.timeout:
-            process1 = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
-
-
+        try:
+            cmd = f'ssh root@192.168.2.2 \"curl http://192.168.2.1:8000/sounds/{self.sound} | aplay\"'
+            while t.time() < now + self.timeout:
+                process1 = Popen([cmd], shell=True, stdout=DEVNULL, stderr=STDOUT).wait()
+        except Exception as e:
+            print(e)
+            exit(1)
         
         
      

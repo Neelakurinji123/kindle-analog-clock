@@ -77,7 +77,7 @@ setting file: `music.json`
 - stop time: 24 hour format
 - playlist: a directory name under `(working directory)/music`
 - playmode: one of `normal`, `reverse` and `shuffle` 
-- repeat: (WIP)
+- repeat: boolean
 - file_location: `server` or `kindle`
 - display: `circle` or `bar`
 

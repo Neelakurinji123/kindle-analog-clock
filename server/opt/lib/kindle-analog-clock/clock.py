@@ -293,10 +293,10 @@ def music(c, w, h, c_music, hr, mi, sec):
             [stop_hr, stop_mi] = list(map(int, entry['stop_time'].split(':')))
             start_dt = datetime(year, mon, mday, start_hr, start_mi).timestamp()
             stop_dt = datetime(year, mon, mday, stop_hr, stop_mi).timestamp()
-            timeout = str(stop_dt - start_dt)
+            timeout = str(int(stop_dt - start_dt))
             if int(start_dt) == int(now):
                 try:
-                    send_message('music#{}#{}'.format(i, timeout))
+                    send_message(f'music#{i}#{timeout}')
                 except Exception as e:
                     print(e)
                 music_run = True
