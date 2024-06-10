@@ -85,9 +85,10 @@ class KindleMusic:
         location = self.location
         playlist = self.playlist
         if location == 'server':
-            cmd = f'find music/\"{playlist}\" -maxdepth 1 -name *.m4a -o -name *.mp3'
+            cmd = f'find music/\\"{playlist}\\" -maxdepth 1 -name *.m4a -o -name *.mp3'
             r = check_output([cmd], shell=True)
             song_list = r.decode().split('\n')
+            print('test123', song_list)
             if playmode == 'normal':
                 pass
             elif playmode == 'reverse':
@@ -95,7 +96,7 @@ class KindleMusic:
             elif playmode == 'shuffle':
                 random.shuffle(song_list)
         elif location == 'kindle':
-            cmd =  f'ssh root@192.168.2.2 \"find /mnt/us/audible/\"{playlist}\" -maxdepth 1 -name *.m4a -o -name *.mp3\"'
+            cmd =  f'ssh root@192.168.2.2 \"find /mnt/us/audible/\\"{playlist}\\" -maxdepth 1 -name *.m4a -o -name *.mp3\"'
             r = check_output([cmd], shell=True)
             song_list = r.decode().split('\n')
             if playmode == 'normal':

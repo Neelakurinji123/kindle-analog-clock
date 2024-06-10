@@ -209,6 +209,16 @@ def music(c, w, h, c_music, hr, mi, sec):
             a = song_log.decode().split()
         except Exception as e:
             print(e)
+            
+        try:
+            with open('/tmp/kindle-analog-clock-KindleAudio_file', 'r') as f:
+                b1 = f.read()
+                b2 = Path(b1).name
+                file_name = re.sub(r'.mp3$|m4a$', '', b2)
+            f.close()
+        except Exception as e:
+            print(e)
+            file_name = str()
 
         title, artist, album, progress, song_time = str(), str(), str(), int(0), ['00', '00']
         try:
@@ -235,6 +245,7 @@ def music(c, w, h, c_music, hr, mi, sec):
                 progress = int(float(a[-6]) / float(a[-3]) * 100)
                 song_time = [str(f'{int(float(a[-6]) / 60):02d}'), str(f'{int(float(a[-6]) % 60):02d}')]
             title = re.sub(r'^title: ', '', title)
+            title = file_name if title == 'n/a' and entry['file_location'] == 'server' else title
             artist = re.sub(r'^artist: ', '', artist)
             album = re.sub(r'^album: ', '', album)
         except TypeError:
