@@ -274,7 +274,7 @@ e.g.)
 
 - [Amazon Kindle](https://www.amazon.com/), Amazon's E Ink e-readers.
 - [Mplayer](https://www.mobileread.com/forums/showthread.php?t=119851), Kindle3 media player
-- [SVG Icon](https://iconduck.com/), public dmain SVG icon site.
+- [SVG Icon](https://iconduck.com/), public domain SVG icon site.
   - bell icon: MIT License
   - bell ringing 2 icon: MIT License
   - task done icon: MIT License

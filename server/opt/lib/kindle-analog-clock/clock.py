@@ -22,7 +22,8 @@ this_file = os.path.realpath(__file__)
 path = Path(this_file).parents[0]
 os.chdir(str(path))
 
-#from KindleAudio import KindleMusic, KindleAlarm
+kindleIP = '192.168.2.2'
+
 import SVGtools
 
 def send_message(m):
@@ -40,7 +41,7 @@ def wordwrap(text, length):
     return w
 
 def reset_display():
-    cmd = f'ssh root@192.168.2.2 \"cd /tmp; /usr/sbin/eips -c\"'
+    cmd = f'ssh root@{kindleIP} \"cd /tmp; /usr/sbin/eips -c\"'
     proc = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
 
 def load_icon(x, y, name, scale=3.0, mirror=False):
@@ -50,9 +51,9 @@ def load_icon(x, y, name, scale=3.0, mirror=False):
         a = f.read()
     f.close()
     if mirror == True:
-        b = SVGtools.transform('({},0,0,{},{},{})'.format(-scale, scale, x, y), a).svg()
+        b = SVGtools.transform(f'({-scale},0,0,{scale},{x},{y})', a).svg()
     else:
-        b = SVGtools.transform('({},0,0,{},{},{})'.format(scale, scale, x, y), a).svg()
+        b = SVGtools.transform(f'({scale},0,0,{scale},{x},{y})', a).svg()
     return b
 
 def create_svg(c, _svg):
@@ -229,12 +230,14 @@ def music(c, w, h, c_music, hr, mi, sec):
             title = ' '.join(a[title_location[0]:artist_location[0]]) if not title_location == list() and not artist_location == list() else 'n/a'
             artist = ' '.join(a[artist_location[0]:album_location[0]]) if not artist_location == list() and not album_location == list() else 'n/a'
             album = ' '.join(a[album_location[0]:end_location[0]]) if not album_location == list() and not end_location == list() else 'n/a'
+
             # Fix encoding errors
             def fix_encode(n):
                 #out = encode(n, encoding='latin_1', errors='replace')
                 #n = out.decode('latin_1')
                 n = re.sub(r'&', '&amp;', n)
                 return n
+                
             title = fix_encode(title)
             artist = fix_encode(artist)
             album = fix_encode(album)
@@ -284,7 +287,7 @@ def music(c, w, h, c_music, hr, mi, sec):
             svg += SVGtools.line(x1=0, x2=(progress / 99 * 800), y1=600, y2=600, style=style).svg()
             x, y = 25, 585
             font_size = 25
-            length = 35
+            length = 40
             svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(title, length)).svg()
             #y += 30
             #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
@@ -409,11 +412,17 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
                      'innerRadiusX': c['stroke_sec_inner_radius'], 'innerRadiusY': c['stroke_sec_inner_radius'],
                       'v': sec, 'step': 60, 'color': c['color_sec']}
             clock_se = DrawClock(**kw2)
+            # Background color
+            clock_se_bg_svg = SVGtools.circle(cx=(w * 0.5), cy=(h * 0.5), r=((c['stroke_sec_radius'] + c['stroke_sec_inner_radius']) * 0.5), \
+                                    stroke=c['bg_color_sec'], width=(c['stroke_sec_radius'] - c['stroke_sec_inner_radius'])).svg()
             # Minite
             #mi
             kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_min_radius'], 'radiusY': c['stroke_min_radius'],
                     'innerRadiusX': c['stroke_min_inner_radius'], 'innerRadiusY': c['stroke_min_inner_radius'],
                     'v': mi, 'step': 60, 'color': c['color_min']}
+            # Background color
+            clock_mi_bg_svg = SVGtools.circle(cx=(w * 0.5), cy=(h * 0.5), r=((c['stroke_min_radius'] + c['stroke_min_inner_radius']) * 0.5), \
+                                    stroke=c['bg_color_min'], width=(c['stroke_min_radius'] - c['stroke_min_inner_radius'])).svg()
             clock_mi = DrawClock(**kw2)
             # Hour
             a = hr + mi / 60
@@ -422,6 +431,9 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_hour_radius'], 'radiusY': c['stroke_hour_radius'],
                     'innerRadiusX': c['stroke_hour_inner_radius'], 'innerRadiusY': c['stroke_hour_inner_radius'],
                      'v': _hr, 'step': 12, 'color': c['color_hour']}
+            # Background color
+            clock_hr_bg_svg = SVGtools.circle(cx=(w * 0.5), cy=(h * 0.5), r=((c['stroke_hour_radius'] + c['stroke_hour_inner_radius']) * 0.5), \
+                                    stroke=c['bg_color_hour'], width=(c['stroke_hour_radius'] - c['stroke_hour_inner_radius'])).svg()
             clock_hr = DrawClock(**kw2)
             # Date
             if c['show_date'] == 'True':
@@ -443,13 +455,16 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             if task_run == True:
                 _svg = schedule_svg + date_svg 
             elif alarm_run == True:
-                _svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + date_svg
+                _svg = clock_se_bg_svg + clock_se.svg() + clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + \
+                        clock_hr.svg() + alarm_svg + date_svg
             elif c_music['env']['display'] == 'circle' and music_run == True:
-                _svg = clock_mi.svg() + clock_hr.svg() + music_svg + date_svg
+                _svg = clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + clock_hr.svg() + music_svg + date_svg
             elif c_music['env']['display'] == 'bar' and music_run == True:
-                _svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + music_svg + date_svg
+                _svg = clock_se_bg_svg + clock_se.svg() + clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + \
+                        clock_hr.svg() + music_svg + date_svg
             else:
-                _svg = clock_se.svg() + clock_mi.svg() + clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
+                _svg = clock_se_bg_svg + clock_se.svg() + clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + \
+                        clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
             svg = create_svg(c, _svg)
             if flag_svg == True:
                 with open('analog_clock.svg', 'w') as f:
@@ -469,9 +484,9 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
                         display(img)
                 img.close()
             if not flag_display == True and not flag_png == True:
-                cmd = f'scp /tmp/{flatten_png} root@192.168.2.2:/tmp'
+                cmd = f'scp /tmp/{flatten_png} root@{kindleIP}:/tmp'
                 proc2 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE).wait()
-                cmd = f'ssh root@192.168.2.2 \"cd /tmp; /usr/sbin/eips -g {flatten_png}\"'
+                cmd = f'ssh root@{kindleIP} \"cd /tmp; /usr/sbin/eips -g {flatten_png}\"'
                 proc3 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
             t.sleep(0.5)
      

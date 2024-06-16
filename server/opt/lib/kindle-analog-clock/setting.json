@@ -19,6 +19,9 @@
 		"stroke_hour_radius": 165,
 		"stroke_hour_inner_radius": 65,
 		"stroke_music_radius": 255,
-		"stroke_music_inner_radius": 235
+		"stroke_music_inner_radius": 235,
+		"bg_color_sec": "rgb(220,220,220)",
+		"bg_color_min": "rgb(220,220,220)",
+		"bg_color_hour": "rgb(220,220,220)"
 	}
 }

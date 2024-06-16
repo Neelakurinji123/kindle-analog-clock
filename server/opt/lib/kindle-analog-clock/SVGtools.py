@@ -36,7 +36,7 @@ class text2:
 
 
 class circle:
-    def __init__(self, cx, cy, r, stroke, width, fill):
+    def __init__(self, cx, cy, r, stroke, width, fill='none'):
         self.cx = cx
         self.cy = cy
         self.r = r
