@@ -6,7 +6,7 @@
 # Update     : 31 May 2024 
 
 import json, os, sys, re, io, math, socket
-from codecs import encode
+#from codecs import encode
 from pathlib import Path
 import time as t
 from datetime import datetime
@@ -14,7 +14,7 @@ import zoneinfo
 from wand.image import Image
 from wand.display import display
 from cairosvg import svg2png
-from multiprocessing import Process
+#from multiprocessing import Process
 from subprocess import Popen, check_output, DEVNULL, STDOUT, PIPE
 
 # Working dir
@@ -56,17 +56,12 @@ def load_icon(x, y, name, scale=3.0, mirror=False):
         b = SVGtools.transform(f'({scale},0,0,{scale},{x},{y})', a).svg()
     return b
 
-def create_svg(c, _svg):
-    #layout = 'landscape'
-    #w, h = (800, 600) if layout == 'landscape' else (600, 800)
-    w, h = 800, 600
+def create_svg(c, w, h, _svg):
     encoding = c['encoding']
     svg = f'''<?xml version="1.0" encoding="{encoding}"?>
-<svg xmlns="http://www.w3.org/2000/svg" height="{h}" width="{w}" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">'''
-    svg += '\n'
-    svg += _svg
-    #svg += '<g font-family="' + 'Droid Sans' + '">\n'
-    svg += '\n</svg>'
+<svg xmlns="http://www.w3.org/2000/svg" height="{h}" width="{w}" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
+{_svg}
+</svg>'''
     return svg
 
 class DrawClock:
@@ -144,40 +139,45 @@ def alarm(c, c_alarm, hr, mi, sec):
     alarm_svg = str()
     alarm_run = None
     interval = int(c['set_interval'])
-    s = [list(x.items())[0][0] for x in c_alarm.values()]
+    # entries
     p = [list(x.items())[0] for x in c_alarm.values()]
+    if c['tz'] == 'local':
+        year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
+    else:
+        year, mon, mday, _, _, _, _, _, _ = datetime.now(c['tz']).timetuple()
     for i, n in enumerate(p, 1):
         if n[0] == 'True':
             entry = n[1]
-            year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
-            now = int(datetime(year, mon, mday, hr, mi, sec).timestamp())
             [start_hr, start_mi] = list(map(int, entry['time'].split(':')))
-            start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
+            if c['tz'] == 'local':
+                start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
+            else:
+                start_dt = int(datetime(year, mon, mday, start_hr, start_mi, tzinfo=c['tz']).timestamp())
             timeout = int(re.sub(r'm$', '', entry['timeout']))
             stop_dt = start_dt + timeout * 60
-            if start_dt == now:
+            if start_dt == c['now']:
                 alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 350, 250
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0)
                 try:
-                    send_message('alarm#{}'.format(i))
+                    send_message(f'alarm#{i}')
                 except Exception as e:
                     print(e)
                 return alarm_svg, alarm_run
-            elif start_dt <= now <= stop_dt and ((now - start_dt) / interval) % 2 == 1:
+            elif start_dt <= c['now'] <= stop_dt and ((c['now'] - start_dt) / interval) % 2 == 1:
                 alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 450, 250
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0, mirror=True)
                 return alarm_svg, alarm_run
-            elif start_dt <= now <= stop_dt:
+            elif start_dt <= c['now'] <= stop_dt:
                 alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 350, 250
                 alarm_svg = load_icon(x=x, y=y, name=name, scale=4.0)
                 return alarm_svg, alarm_run
-            elif now == stop_dt:
+            elif c['now'] == stop_dt:
                 alarm_run = True
                 name = 'bell_ringing_2.svg'
                 x, y = 0, 5          
@@ -190,16 +190,16 @@ def alarm(c, c_alarm, hr, mi, sec):
                 alarm_svg = load_icon(x=x, y=y, name=name)
     return alarm_svg, alarm_run
 
-
-
 def music(c, w, h, c_music, hr, mi, sec):
     music_svg = str()
     env = c_music['env']
     music = c_music['music']
     music_run = None
-    year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
-    now = datetime(year, mon, mday, hr, mi, sec).timestamp()
-    s = [ list(x.items())[0][0] for x in music.values()]
+    if c['tz'] == 'local':
+        year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
+    else:
+        year, mon, mday, _, _, _, _, _, _ = datetime.now(c['tz']).timetuple()
+    # get entries
     p = [ list(x.items())[0] for x in music.values()]
 
     def get_song_info(entry):
@@ -276,9 +276,10 @@ def music(c, w, h, c_music, hr, mi, sec):
             #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
             #y += 30
             #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(album, length), stroke='rgb(128,128,128)').svg()
-            x, y = 785, 55
+            #x, y = 785, 55
+            x, y = 25, 530
             font_size = 45
-            svg += SVGtools.text(anchor='end', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
+            svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
         elif env['display'] == 'bar':
             name = 'speaker.svg'
             x, y = 358, 257
@@ -294,10 +295,8 @@ def music(c, w, h, c_music, hr, mi, sec):
             #y += 30
             #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(album, length), stroke='rgb(128,128,128)').svg()
             x, y = 25, 530
-            #x, y = 785, 55
             font_size = 45
             svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
-            #svg += SVGtools.text(anchor='end', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
         return svg
     
     for i, n in enumerate(p, 1):
@@ -305,10 +304,14 @@ def music(c, w, h, c_music, hr, mi, sec):
             entry = n[1]
             [start_hr, start_mi] = list(map(int, entry['start_time'].split(':')))
             [stop_hr, stop_mi] = list(map(int, entry['stop_time'].split(':')))
-            start_dt = datetime(year, mon, mday, start_hr, start_mi).timestamp()
-            stop_dt = datetime(year, mon, mday, stop_hr, stop_mi).timestamp()
+            if c['tz'] == 'local':
+                start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
+                stop_dt = int(datetime(year, mon, mday, stop_hr, stop_mi).timestamp())
+            else:
+                start_dt = int(datetime(year, mon, mday, start_hr, start_mi, tzinfo=c['tz']).timestamp())
+                stop_dt = int(datetime(year, mon, mday, stop_hr, stop_mi, tzinfo=c['tz']).timestamp())
             timeout = str(int(stop_dt - start_dt))
-            if int(start_dt) == int(now):
+            if int(start_dt) == int(c['now']):
                 try:
                     send_message(f'music#{i}#{timeout}')
                 except Exception as e:
@@ -317,7 +320,7 @@ def music(c, w, h, c_music, hr, mi, sec):
                 args = get_song_info(entry)
                 music_svg = create_music_svg(w, h, env, *args)
                 return music_svg, music_run
-            elif int(start_dt) <= int(now) <= int(stop_dt):
+            elif int(start_dt) <= int(c['now']) <= int(stop_dt):
                 music_run = True
                 args = get_song_info(entry)
                 music_svg = create_music_svg(w, h, env, *args)
@@ -334,8 +337,10 @@ def schedule(c_schedule, hr, mi, sec):
     schedule_svg = str()
     task_run = None
     s = [ list(x.items())[0][0] for x in c_schedule.values()]
-    year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
-    now = datetime(year, mon, mday, hr, mi, sec).timestamp()
+    if c['tz'] == 'local':
+        year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
+    else:
+        year, mon, mday, _, _, _, _, _, _ = datetime.now(c['tz']).timetuple()
 
     def message(title, items):
         x, y = 400, 150
@@ -356,7 +361,7 @@ def schedule(c_schedule, hr, mi, sec):
         svg = load_icon(x=x, y=y, name=name)
         return svg
 
-    if "True" in s:
+    if 'True' in s:
         for d in c_schedule.values():
             b, v = list(d.items())[0]
             title = v['task']['title']
@@ -365,21 +370,24 @@ def schedule(c_schedule, hr, mi, sec):
                 sch_hr, sch_mi = v['time'].split(':')
                 valid = int(re.sub(r'm$', '', v['valid']))
                 [start_hr, start_mi] = list(map(int, v['time'].split(':')))
-                start_dt = datetime(year, mon, mday, start_hr, start_mi).timestamp()
+                if c['tz'] == 'local':
+                    start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
+                else:
+                    start_dt = int(datetime(year, mon, mday, start_hr, start_mi, tzinfo=c['tz']).timestamp())
                 stop_dt = start_dt + valid * 60
-                if int(start_dt) == int(now):
+                if int(start_dt) == int(c['now']):
                     task_run = True
                     task = 'start'
                     reset_display()
                     schedule_svg = schedule_icon(v)
                     schedule_svg += message(title, items)
                     return schedule_svg, task_run
-                elif int(start_dt) <= int(now) < int(stop_dt):
+                elif int(start_dt) <= int(c['now']) < int(stop_dt):
                     task_run = True
                     schedule_svg = schedule_icon(v)
                     schedule_svg += message(title, items)
                     return schedule_svg, task_run  
-                elif int(now) == int(stop_dt):
+                elif int(c['now']) == int(stop_dt):
                     task_run = True
                     task = 'end'
                     reset_display()
@@ -398,15 +406,16 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             t.sleep(0.5)
             continue
         else:
-            if c['timezone'] == 'local':
+            if c['tz'] == 'local':
                 year, mon, mday, hr, mi, sec, wday, yday, isdst = datetime.now().timetuple()
                 day = datetime.now().strftime("%-d %B").lower()
                 week = datetime.now().strftime("%A").lower()
+                c['now'] = int(datetime(year, mon, mday, hr, mi, sec).timestamp())
             else:
-                tz = zoneinfo.ZoneInfo(c["timezone"])
-                year, mon, mday, hr, mi, sec, wday, yday, isdst = datetime.now(tz).timetuple()
-                day = datetime.now(tz).strftime("%-d %B").lower()
-                week = datetime.now(tz).strftime("%A").lower()
+                year, mon, mday, hr, mi, sec, wday, yday, isdst = datetime.now(c['tz']).timetuple()
+                day = datetime.now(c['tz']).strftime("%-d %B").lower()
+                week = datetime.now(c['tz']).strftime("%A").lower()
+                c['now'] = int(datetime(year, mon, mday, hr, mi, sec, tzinfo=c['tz']).timestamp())
             # Second
             kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_sec_radius'], 'radiusY': c['stroke_sec_radius'],
                      'innerRadiusX': c['stroke_sec_inner_radius'], 'innerRadiusY': c['stroke_sec_inner_radius'],
@@ -465,7 +474,7 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             else:
                 _svg = clock_se_bg_svg + clock_se.svg() + clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + \
                         clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
-            svg = create_svg(c, _svg)
+            svg = create_svg(c, w, h, _svg)
             if flag_svg == True:
                 with open('analog_clock.svg', 'w') as f:
                     f.write(svg)
@@ -521,6 +530,11 @@ if __name__ == "__main__":
         c_alarm = json.load(f2)['alarm']
         c_music = json.load(f3)
         c_schedule = json.load(f4)['schedule']
+        
+    if c['timezone'] == 'local':
+        c['tz'] = 'local'
+    else:
+        c['tz'] = zoneinfo.ZoneInfo(c["timezone"])
     
     if flag_config == True:
         print(json.dumps(c, ensure_ascii=False, indent=4))
