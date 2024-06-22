@@ -67,13 +67,6 @@ def load_icon(x, y, name, scale=3.0, mirror=False):
         b = SVGtools.transform(f'({scale},0,0,{scale},{x},{y})', a).svg()
     return b
 
-def create_svg(c, w, h, _svg):
-    svg = f'''<?xml version="1.0" encoding="{c['encoding']}"?>
-<svg xmlns="http://www.w3.org/2000/svg" height="{h}" width="{w}" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
-{_svg}
-</svg>'''
-    return svg
-
 class DrawClock:
     def __init__(self, **kw2):
         self.w = kw2.get('w')
@@ -492,7 +485,7 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             else:
                 _svg = clock_se_bg_svg + clock_se.svg() + clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + \
                         clock_hr.svg() + alarm_svg + music_svg + schedule_svg + date_svg
-            svg = create_svg(c, w, h, _svg)
+            svg = SVGtools.format(encoding=c['encoding'], height=h, width=w, font=c['font'], _svg=_svg).svg()
             if flag_svg == True:
                 with open('analog_clock.svg', 'w') as f:
                     f.write(svg)

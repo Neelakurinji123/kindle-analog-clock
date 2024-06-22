@@ -3,7 +3,7 @@
 		"layout": "landscape",
 		"set_interval": 5,
 		"timezone": "local",
-		"font": "Verdana",
+		"font": "/root/.fonts/Sans_Regular.ttf",
 		"show_date": "True",
 		"encoding": "iso-8859-1",
 		"color_sec": "rgb(0,0,0)",
