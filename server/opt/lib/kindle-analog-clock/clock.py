@@ -39,7 +39,18 @@ def wordwrap(text, length):
     else:
         w = text
     return w
-
+    
+def check_week(week, weekday=None, weekend=None, **kw):
+    if week in ['mon', 'tue', 'wed', 'thu', 'fri'] and weekday == "True":
+        a = True
+    elif week in ['sun', 'sat'] and weekend == "True":
+        a = True
+    elif week in kw and kw[week] == "True":
+        a = True
+    else:
+        a = False
+    return a
+        
 def reset_display():
     cmd = f'ssh root@{kindleIP} \"cd /tmp; /usr/sbin/eips -c\"'
     proc = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
@@ -57,8 +68,7 @@ def load_icon(x, y, name, scale=3.0, mirror=False):
     return b
 
 def create_svg(c, w, h, _svg):
-    encoding = c['encoding']
-    svg = f'''<?xml version="1.0" encoding="{encoding}"?>
+    svg = f'''<?xml version="1.0" encoding="{c['encoding']}"?>
 <svg xmlns="http://www.w3.org/2000/svg" height="{h}" width="{w}" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
 {_svg}
 </svg>'''
@@ -135,7 +145,7 @@ Z" fill="{color}" transform="rotate({rotate}, {centerX}, {centerY})"/>
 '''    
         return a
 
-def alarm(c, c_alarm, hr, mi, sec):
+def alarm(c, c_alarm, hr, mi, sec, week):
     alarm_svg = str()
     alarm_run = None
     interval = int(c['set_interval'])
@@ -148,6 +158,8 @@ def alarm(c, c_alarm, hr, mi, sec):
     for i, n in enumerate(p, 1):
         if n[0] == 'True':
             entry = n[1]
+            if 'week' in entry and not check_week(week=week, **entry['week']):
+                continue
             [start_hr, start_mi] = list(map(int, entry['time'].split(':')))
             if c['tz'] == 'local':
                 start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
@@ -190,7 +202,7 @@ def alarm(c, c_alarm, hr, mi, sec):
                 alarm_svg = load_icon(x=x, y=y, name=name)
     return alarm_svg, alarm_run
 
-def music(c, w, h, c_music, hr, mi, sec):
+def music(c, w, h, c_music, hr, mi, sec, week):
     music_svg = str()
     env = c_music['env']
     music = c_music['music']
@@ -270,7 +282,7 @@ def music(c, w, h, c_music, hr, mi, sec):
             svg += progress_circle.svg()
             x, y = 25, 575
             font_size = 25
-            length = 35
+            length = 45
             svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(title, length)).svg()
             #y += 30
             #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
@@ -288,7 +300,7 @@ def music(c, w, h, c_music, hr, mi, sec):
             svg += SVGtools.line(x1=0, x2=(progress / 99 * 800), y1=600, y2=600, style=style).svg()
             x, y = 25, 585
             font_size = 25
-            length = 40
+            length = 45
             svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(title, length)).svg()
             #y += 30
             #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
@@ -302,6 +314,8 @@ def music(c, w, h, c_music, hr, mi, sec):
     for i, n in enumerate(p, 1):
         if n[0] == 'True':
             entry = n[1]
+            if 'week' in entry and not check_week(week=week, **entry['week']):
+                continue
             [start_hr, start_mi] = list(map(int, entry['start_time'].split(':')))
             [stop_hr, stop_mi] = list(map(int, entry['stop_time'].split(':')))
             if c['tz'] == 'local':
@@ -333,7 +347,7 @@ def music(c, w, h, c_music, hr, mi, sec):
 
     return music_svg, music_run
 
-def schedule(c_schedule, hr, mi, sec):
+def schedule(c_schedule, hr, mi, sec, week):
     schedule_svg = str()
     task_run = None
     s = [ list(x.items())[0][0] for x in c_schedule.values()]
@@ -364,6 +378,8 @@ def schedule(c_schedule, hr, mi, sec):
     if 'True' in s:
         for d in c_schedule.values():
             b, v = list(d.items())[0]
+            if 'week' in v and not check_week(week=week, **v['week']):
+                continue
             title = v['task']['title']
             items = v['task']['items']
             if b == 'True':
@@ -410,11 +426,13 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
                 year, mon, mday, hr, mi, sec, wday, yday, isdst = datetime.now().timetuple()
                 day = datetime.now().strftime("%-d %B").lower()
                 week = datetime.now().strftime("%A").lower()
+                ab_week = datetime.now().strftime("%a").lower()
                 c['now'] = int(datetime(year, mon, mday, hr, mi, sec).timestamp())
             else:
                 year, mon, mday, hr, mi, sec, wday, yday, isdst = datetime.now(c['tz']).timetuple()
                 day = datetime.now(c['tz']).strftime("%-d %B").lower()
                 week = datetime.now(c['tz']).strftime("%A").lower()
+                ab_week = datetime.now(c['tz']).strftime("%a").lower()
                 c['now'] = int(datetime(year, mon, mday, hr, mi, sec, tzinfo=c['tz']).timestamp())
             # Second
             kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_sec_radius'], 'radiusY': c['stroke_sec_radius'],
@@ -455,11 +473,11 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             else:
                 date_svg = str()
             # Alarm
-            alarm_svg, alarm_run = alarm(c=c, c_alarm=c_alarm, hr=hr, mi=mi, sec=sec)
+            alarm_svg, alarm_run = alarm(c=c, c_alarm=c_alarm, hr=hr, mi=mi, sec=sec, week=ab_week)
             # Schedule
-            schedule_svg, task_run = schedule(c_schedule, hr=hr, mi=mi, sec=sec)
+            schedule_svg, task_run = schedule(c_schedule, hr=hr, mi=mi, sec=sec, week=ab_week)
             # Music
-            music_svg, music_run = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec)
+            music_svg, music_run = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec, week=ab_week)
             # SVG output; priority: task > alarm > music > clock
             if task_run == True:
                 _svg = schedule_svg + date_svg 

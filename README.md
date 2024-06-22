@@ -56,6 +56,9 @@ setting file: `alarm.json`
 
 - on/off: boolean
 - time: 24 hour format
+- timeout: minute
+- week: dictionary
+  - keys ('sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'weekday', 'weekend'): value (boolean) 
 - sound: sound file
 
 #### c) music config
@@ -75,7 +78,7 @@ setting file: `music.json`
 - on/off: boolean
 - start time: 24 hour format
 - stop time: 24 hour format
-- playlist: a directory name under `(working directory)/music`
+- playlist: a directory name under `(working directory)/music` of server or  `/mnt/us/audible` of kindle
 - playmode: one of `normal`, `reverse` and `shuffle` 
 - repeat: boolean
 - file_location: `server` or `kindle`

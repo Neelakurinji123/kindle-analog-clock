@@ -1,6 +1,8 @@
 {
 	"alarm": {
-		"1": {"False": {"time": "08:55", "timeout": "1m", "sound": "alarm-clock-sound.wav"}},
-		"2": {"False": {"time": "20:00", "timeout": "1m", "sound": "alarm-clock-sound.wav"}}
+		"1": {"False": {"time": "08:05", "timeout": "1m", "week":{"man": "True", "tue": "True", "wed": "True", "thu": "True", "fri": "True"}, "sound": "alarm-clock-sound.wav"}},
+		"2": {"False": {"time": "07:32", "timeout": "1m", "week":{"weekday": "True"}, "sound": "alarm-clock-sound.wav"}},
+		"3": {"False": {"time": "08:45", "timeout": "1m", "week":{"weekend": "True"}, "sound": "alarm-clock-sound.wav"}},
+		"3": {"False": {"time": "07:45", "timeout": "1m", "sound": "alarm-clock-sound.wav"}}
 	}
 }
