@@ -14,7 +14,6 @@ import zoneinfo
 from wand.image import Image
 from wand.display import display
 from cairosvg import svg2png
-#from multiprocessing import Process
 from subprocess import Popen, check_output, DEVNULL, STDOUT, PIPE
 
 # Working dir
@@ -144,10 +143,6 @@ def alarm(c, c_alarm, hr, mi, sec, week):
     interval = int(c['set_interval'])
     # entries
     p = [list(x.items())[0] for x in c_alarm.values()]
-    if c['tz'] == 'local':
-        year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
-    else:
-        year, mon, mday, _, _, _, _, _, _ = datetime.now(c['tz']).timetuple()
     for i, n in enumerate(p, 1):
         if n[0] == 'True':
             entry = n[1]
@@ -155,9 +150,9 @@ def alarm(c, c_alarm, hr, mi, sec, week):
                 continue
             [start_hr, start_mi] = list(map(int, entry['time'].split(':')))
             if c['tz'] == 'local':
-                start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
+                start_dt = int(datetime(c['year'], c['mon'], c['mday'], start_hr, start_mi).timestamp())
             else:
-                start_dt = int(datetime(year, mon, mday, start_hr, start_mi, tzinfo=c['tz']).timestamp())
+                start_dt = int(datetime(c['year'], c['mon'], c['mday'], start_hr, start_mi, tzinfo=c['tz']).timestamp())
             timeout = int(re.sub(r'm$', '', entry['timeout']))
             stop_dt = start_dt + timeout * 60
             if start_dt == c['now']:
@@ -200,10 +195,6 @@ def music(c, w, h, c_music, hr, mi, sec, week):
     env = c_music['env']
     music = c_music['music']
     music_run = None
-    if c['tz'] == 'local':
-        year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
-    else:
-        year, mon, mday, _, _, _, _, _, _ = datetime.now(c['tz']).timetuple()
     # get entries
     p = [ list(x.items())[0] for x in music.values()]
 
@@ -312,11 +303,11 @@ def music(c, w, h, c_music, hr, mi, sec, week):
             [start_hr, start_mi] = list(map(int, entry['start_time'].split(':')))
             [stop_hr, stop_mi] = list(map(int, entry['stop_time'].split(':')))
             if c['tz'] == 'local':
-                start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
-                stop_dt = int(datetime(year, mon, mday, stop_hr, stop_mi).timestamp())
+                start_dt = int(datetime(c['year'], c['mon'], c['mday'], start_hr, start_mi).timestamp())
+                stop_dt = int(datetime(c['year'], c['mon'], c['mday'], stop_hr, stop_mi).timestamp())
             else:
-                start_dt = int(datetime(year, mon, mday, start_hr, start_mi, tzinfo=c['tz']).timestamp())
-                stop_dt = int(datetime(year, mon, mday, stop_hr, stop_mi, tzinfo=c['tz']).timestamp())
+                start_dt = int(datetime(c['year'], c['mon'], c['mday'], start_hr, start_mi, tzinfo=c['tz']).timestamp())
+                stop_dt = int(datetime(c['year'], c['mon'], c['mday'], stop_hr, stop_mi, tzinfo=c['tz']).timestamp())
             timeout = str(int(stop_dt - start_dt))
             if int(start_dt) == int(c['now']):
                 try:
@@ -340,14 +331,10 @@ def music(c, w, h, c_music, hr, mi, sec, week):
 
     return music_svg, music_run
 
-def schedule(c_schedule, hr, mi, sec, week):
+def schedule(c, c_schedule, hr, mi, sec, week):
     schedule_svg = str()
     task_run = None
     s = [ list(x.items())[0][0] for x in c_schedule.values()]
-    if c['tz'] == 'local':
-        year, mon, mday, _, _, _, _, _, _ = datetime.now().timetuple()
-    else:
-        year, mon, mday, _, _, _, _, _, _ = datetime.now(c['tz']).timetuple()
 
     def message(title, items):
         x, y = 400, 150
@@ -380,9 +367,9 @@ def schedule(c_schedule, hr, mi, sec, week):
                 valid = int(re.sub(r'm$', '', v['valid']))
                 [start_hr, start_mi] = list(map(int, v['time'].split(':')))
                 if c['tz'] == 'local':
-                    start_dt = int(datetime(year, mon, mday, start_hr, start_mi).timestamp())
+                    start_dt = int(datetime(c['year'], c['mon'], c['mday'], start_hr, start_mi).timestamp())
                 else:
-                    start_dt = int(datetime(year, mon, mday, start_hr, start_mi, tzinfo=c['tz']).timestamp())
+                    start_dt = int(datetime(c['year'], c['mon'], c['mday'], start_hr, start_mi, tzinfo=c['tz']).timestamp())
                 stop_dt = start_dt + valid * 60
                 if int(start_dt) == int(c['now']):
                     task_run = True
@@ -414,19 +401,25 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
         if not epoch % c['set_interval'] == 0:
             t.sleep(0.5)
             continue
-        else:
+        else:                
             if c['tz'] == 'local':
                 year, mon, mday, hr, mi, sec, wday, yday, isdst = datetime.now().timetuple()
                 day = datetime.now().strftime("%-d %B").lower()
                 week = datetime.now().strftime("%A").lower()
                 ab_week = datetime.now().strftime("%a").lower()
                 c['now'] = int(datetime(year, mon, mday, hr, mi, sec).timestamp())
+                c['year'] = year
+                c['mon'] = mon
+                c['mday'] = mday
             else:
                 year, mon, mday, hr, mi, sec, wday, yday, isdst = datetime.now(c['tz']).timetuple()
                 day = datetime.now(c['tz']).strftime("%-d %B").lower()
                 week = datetime.now(c['tz']).strftime("%A").lower()
                 ab_week = datetime.now(c['tz']).strftime("%a").lower()
                 c['now'] = int(datetime(year, mon, mday, hr, mi, sec, tzinfo=c['tz']).timestamp())
+                c['year'] = year
+                c['mon'] = mon
+                c['mday'] = mday
             # Second
             kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_sec_radius'], 'radiusY': c['stroke_sec_radius'],
                      'innerRadiusX': c['stroke_sec_inner_radius'], 'innerRadiusY': c['stroke_sec_inner_radius'],
@@ -436,7 +429,6 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             clock_se_bg_svg = SVGtools.circle(cx=(w * 0.5), cy=(h * 0.5), r=((c['stroke_sec_radius'] + c['stroke_sec_inner_radius']) * 0.5), \
                                     stroke=c['bg_color_sec'], width=(c['stroke_sec_radius'] - c['stroke_sec_inner_radius'])).svg()
             # Minite
-            #mi
             kw2 = {'w': w, 'h': h, 'radiusX': c['stroke_min_radius'], 'radiusY': c['stroke_min_radius'],
                     'innerRadiusX': c['stroke_min_inner_radius'], 'innerRadiusY': c['stroke_min_inner_radius'],
                     'v': mi, 'step': 60, 'color': c['color_min']}
@@ -468,7 +460,7 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             # Alarm
             alarm_svg, alarm_run = alarm(c=c, c_alarm=c_alarm, hr=hr, mi=mi, sec=sec, week=ab_week)
             # Schedule
-            schedule_svg, task_run = schedule(c_schedule, hr=hr, mi=mi, sec=sec, week=ab_week)
+            schedule_svg, task_run = schedule(c=c, c_schedule=c_schedule, hr=hr, mi=mi, sec=sec, week=ab_week)
             # Music
             music_svg, music_run = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec, week=ab_week)
             # SVG output; priority: task > alarm > music > clock
