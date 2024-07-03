@@ -265,8 +265,9 @@ def music(c, w, h, c_music, hr, mi, sec, week):
             progress_circle = DrawClock(**kw2)
             svg += progress_circle.svg()
             x, y = 25, 575
+            # music title
             font_size = 25
-            length = 45
+            length = 40
             svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(title, length)).svg()
             #y += 30
             #svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=wordwrap(artist, length), stroke='rgb(128,128,128)').svg()
