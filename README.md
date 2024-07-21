@@ -294,7 +294,7 @@ All resources is here:
 5. Edit /etc/profile and add `/mnt/us/python3/bin` to PATH
 6. Install pip: `python3 -m ensurepip`
 7. Install python mopdules: `pip3 install Wand cairosvg tzinfo`
-8. The program runs CPU usage is almost 100% and drain a battery, adjust interval of PNG processing.  
+8. The program runs with CPU usage is almost 100% and drain a battery, adjust interval of PNG processing.  
 
 
 
