@@ -50,8 +50,11 @@ def check_week(week, weekday=None, weekend=None, **kw):
         a = False
     return a
         
-def reset_display():
-    cmd = f'ssh root@{kindleIP} \"cd /tmp; /usr/sbin/eips -c\"'
+def reset_display(kindle_server=None):
+    if kindle_server == True:
+        cmd = '/usr/sbin/eips -c'
+    else:
+        cmd = f'ssh root@{kindleIP} \"cd /tmp; /usr/sbin/eips -c\"'
     proc = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
 
 def load_icon(x, y, name, scale=3.0, mirror=False):
@@ -190,13 +193,11 @@ def alarm(c, c_alarm, hr, mi, sec, week):
                 alarm_svg = load_icon(x=x, y=y, name=name)
     return alarm_svg, alarm_run
 
-def music(c, w, h, c_music, hr, mi, sec, week):
+def music(c, w, h, c_music, c_music_env, hr, mi, sec, week):
     music_svg = str()
-    env = c_music['env']
-    music = c_music['music']
     music_run = None
     # get entries
-    p = [ list(x.items())[0] for x in music.values()]
+    p = [ list(x.items())[0] for x in c_music.values()]
 
     def get_song_info(entry):
         log = '/tmp/kindle-analog-clock_music.log'
@@ -254,8 +255,8 @@ def music(c, w, h, c_music, hr, mi, sec, week):
             print(e)
         return title, artist, album, progress, song_time
     
-    def create_music_svg(w, h, env, title, artist, album, progress, song_time, *args):
-        if env['display'] == 'circle':
+    def create_music_svg(w, h, c_music_env, title, artist, album, progress, song_time, *args):
+        if c_music_env['display'] == 'circle':
             name = 'speaker.svg'
             x, y = 358, 257
             svg = load_icon(x=x, y=y, name=name, scale=5.4)
@@ -277,7 +278,7 @@ def music(c, w, h, c_music, hr, mi, sec, week):
             x, y = 25, 530
             font_size = 45
             svg += SVGtools.text(anchor='start', fontsize=font_size, x=x, y=y, v=':'.join(song_time), stroke='rgb(128,128,128)').svg()
-        elif env['display'] == 'bar':
+        elif c_music_env['display'] == 'bar':
             name = 'speaker.svg'
             x, y = 358, 257
             svg = load_icon(x=x, y=y, name=name, scale=5.4)
@@ -317,12 +318,12 @@ def music(c, w, h, c_music, hr, mi, sec, week):
                     print(e)
                 music_run = True
                 args = get_song_info(entry)
-                music_svg = create_music_svg(w, h, env, *args)
+                music_svg = create_music_svg(w, h, c_music_env, *args)
                 return music_svg, music_run
             elif int(start_dt) <= int(c['now']) <= int(stop_dt):
                 music_run = True
                 args = get_song_info(entry)
-                music_svg = create_music_svg(w, h, env, *args)
+                music_svg = create_music_svg(w, h, c_music_env, *args)
                 return music_svg, music_run
             else:
                 music_run = False
@@ -375,7 +376,7 @@ def schedule(c, c_schedule, hr, mi, sec, week):
                 if int(start_dt) == int(c['now']):
                     task_run = True
                     task = 'start'
-                    reset_display()
+                    reset_display(c['kindle_server'])
                     schedule_svg = schedule_icon(v)
                     schedule_svg += message(title, items)
                     return schedule_svg, task_run
@@ -387,7 +388,7 @@ def schedule(c, c_schedule, hr, mi, sec, week):
                 elif int(c['now']) == int(stop_dt):
                     task_run = True
                     task = 'end'
-                    reset_display()
+                    reset_display(c['kindle_server'])
                     schedule_svg = schedule_icon(v)
                     schedule_svg += message(title, items)
                     return schedule_svg, task_run
@@ -396,7 +397,7 @@ def schedule(c, c_schedule, hr, mi, sec, week):
                     schedule_svg = schedule_icon(v)  
     return schedule_svg, task_run
 
-def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_display, flag_png, **kw):   
+def main(c, c_alarm, c_music, c_music_env, c_schedule, w, h, flag_svg, flag_config, flag_display, flag_png, **kw):   
     while True:
         epoch = int(datetime.now().timestamp())
         if not epoch % c['set_interval'] == 0:
@@ -449,7 +450,7 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
                                     stroke=c['bg_color_hour'], width=(c['stroke_hour_radius'] - c['stroke_hour_inner_radius'])).svg()
             clock_hr = DrawClock(**kw2)
             # Date
-            if c['show_date'] == 'True':
+            if c['show_date'] == True:
                 x, y = 775, 520
                 font_size = 30
                 date_svg = SVGtools.text2(anchor='end', fontweight='bold', fontsize=font_size, x=x, y=y, v=day).svg()
@@ -463,16 +464,16 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
             # Schedule
             schedule_svg, task_run = schedule(c=c, c_schedule=c_schedule, hr=hr, mi=mi, sec=sec, week=ab_week)
             # Music
-            music_svg, music_run = music(c=c, w=w, h=h, c_music=c_music, hr=hr, mi=mi, sec=sec, week=ab_week)
+            music_svg, music_run = music(c=c, w=w, h=h, c_music=c_music, c_music_env=c_music_env, hr=hr, mi=mi, sec=sec, week=ab_week)
             # SVG output; priority: task > alarm > music > clock
             if task_run == True:
                 _svg = schedule_svg + date_svg 
             elif alarm_run == True:
                 _svg = clock_se_bg_svg + clock_se.svg() + clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + \
                         clock_hr.svg() + alarm_svg + date_svg
-            elif c_music['env']['display'] == 'circle' and music_run == True:
+            elif c_music_env['display'] == 'circle' and music_run == True:
                 _svg = clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + clock_hr.svg() + music_svg + date_svg
-            elif c_music['env']['display'] == 'bar' and music_run == True:
+            elif c_music_env['display'] == 'bar' and music_run == True:
                 _svg = clock_se_bg_svg + clock_se.svg() + clock_mi_bg_svg + clock_mi.svg() + clock_hr_bg_svg + \
                         clock_hr.svg() + music_svg + date_svg
             else:
@@ -496,7 +497,10 @@ def main(c, c_alarm, c_music, c_schedule, w, h, flag_svg, flag_config, flag_disp
                     if flag_display == True:
                         display(img)
                 img.close()
-            if not flag_display == True and not flag_png == True:
+            if not flag_display == True and not flag_png == True and c['kindle_server'] == True:
+                cmd = f'/usr/sbin/eips -g /tmp/{flatten_png}'
+                proc3 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE)
+            elif not flag_display == True and not flag_png == True:
                 cmd = f'scp /tmp/{flatten_png} root@{kindleIP}:/tmp'
                 proc2 = Popen([cmd],shell=True, stdout=PIPE, stderr=PIPE).wait()
                 cmd = f'ssh root@{kindleIP} \"cd /tmp; /usr/sbin/eips -g {flatten_png}\"'
@@ -521,7 +525,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         setting = sys.argv[1]
     else:
-        setting = 'setting.json'          
+        setting = 'setting.json'
 
     setting_alarm = 'alarm.json'
     setting_music ='music.json'
@@ -532,7 +536,9 @@ if __name__ == "__main__":
         open(setting_schedule, 'r') as f4):
         c = json.load(f1)['clock']
         c_alarm = json.load(f2)['alarm']
-        c_music = json.load(f3)
+        _c_music = json.load(f3)
+        c_music = _c_music['music']
+        c_music_env = _c_music['env']
         c_schedule = json.load(f4)['schedule']
         
     if c['timezone'] == 'local':
@@ -543,12 +549,12 @@ if __name__ == "__main__":
     if flag_config == True:
         print(json.dumps(c, ensure_ascii=False, indent=4))
         print(json.dumps(c_alarm, ensure_ascii=False, indent=4))
-        print(json.dumps(c_music, ensure_ascii=False, indent=4))
+        print(json.dumps(_c_music, ensure_ascii=False, indent=4))
         print(json.dumps(c_schedule, ensure_ascii=False, indent=4))
         exit(0)
         
     w, h = (800, 600) if c['layout'] == 'landscape' else (600, 800)
-    kw = {'c': c, 'c_alarm': c_alarm, 'c_music': c_music, 'c_schedule': c_schedule, 'w': w, 'h': h,
+    kw = {'c': c, 'c_alarm': c_alarm, 'c_music': c_music, 'c_music_env': c_music_env, 'c_schedule': c_schedule, 'w': w, 'h': h,
                 'flag_svg': flag_svg, 'flag_config': flag_config, 'flag_display': flag_display, 'flag_png': flag_png}
 
     with open('/tmp/kindle-analog-clock.pid', 'w') as f:

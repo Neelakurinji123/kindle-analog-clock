@@ -4,15 +4,15 @@
 		"set_interval": 5,
 		"timezone": "local",
 		"font": "/root/.fonts/Sans_Regular.ttf",
-		"show_date": "True",
+		"show_date": true,
 		"encoding": "iso-8859-1",
 		"color_sec": "rgb(0,0,0)",
 		"color_min": "rgb(0,0,0)",
 		"color_hour": "rgb(0,0,0)",
 		"color_music": "rgb(128,128,128)",
 		"invert_color": "rgb(128,128,128)",
-		"reflesh_min" : "False",
-		"reflesh_hour" : "True",
+		"reflesh_min" : false,
+		"reflesh_hour" : true,
 		"stroke_sec_radius": 250,
 		"stroke_sec_inner_radius": 235,
 		"stroke_min_radius": 230,
@@ -23,6 +23,7 @@
 		"stroke_music_inner_radius": 235,
 		"bg_color_sec": "rgb(220,220,220)",
 		"bg_color_min": "rgb(220,220,220)",
-		"bg_color_hour": "rgb(220,220,220)"
+		"bg_color_hour": "rgb(220,220,220)",
+		"kindle_server": true
 	}
 }

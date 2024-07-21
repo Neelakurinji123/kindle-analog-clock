@@ -273,6 +273,30 @@ e.g.)
 59 * * * * sh -c '/opt/lib/kindle-analog-clock/end.sh  2>>/tmp/kindle-analog-clock.err'
 ```
 
+# Run on Kindle (without server) [WIP]
+
+I learned python3 is working on Kindle 3 recently.
+So I managed to run my program on Kindle 3.
+Working on kindle 3, music files have to be located at kindle 3.
+Also edit file_location to `kindle` in `music.json`.
+Timezone needs to be explicitly defined (f.g. Asia/Tokyo), otherwise timezone is UTC.
+
+## Installation Pytohn3 on Kindle 3
+
+All resources is here:
+
+- https://www.mobileread.com/forums/showthread.php?t=225030
+
+1. Install Mobileread Kindlet Kit
+2. Install KUAL
+3. Install MR Package Installer
+4. Install Python3 with MR Package Installer
+5. Edit /etc/profile and add `/mnt/us/python3/bin` to PATH
+6. Install pip: `python3 -m ensurepip`
+7. Install python mopdules: `pip3 install Wand cairosvg tzinfo`
+
+
+
 # Credits
 
 - [Amazon Kindle](https://www.amazon.com/), Amazon's E Ink e-readers.
