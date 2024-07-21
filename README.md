@@ -281,7 +281,7 @@ Working on kindle 3, music files have to be located at kindle 3.
 Also edit file_location to `kindle` in `music.json`.
 Timezone needs to be explicitly defined (f.g. Asia/Tokyo), otherwise timezone is UTC.
 
-## Installation Pytohn3 on Kindle 3
+## Installation Python3 on Kindle 3
 
 All resources is here:
 
@@ -294,6 +294,7 @@ All resources is here:
 5. Edit /etc/profile and add `/mnt/us/python3/bin` to PATH
 6. Install pip: `python3 -m ensurepip`
 7. Install python mopdules: `pip3 install Wand cairosvg tzinfo`
+8. The program runs CPU usage is almost 100% and drain a battery, adjust interval of PNG processing.  
 
 
 
