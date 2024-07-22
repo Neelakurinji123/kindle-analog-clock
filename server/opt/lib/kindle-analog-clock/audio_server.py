@@ -80,6 +80,12 @@ if __name__ == "__main__":
     with open(setting, 'r') as f:
         c_alarm = json.load(f)['alarm']
     f.close()
+    
+    if os.uname().nodename == 'kindle':
+        c['kindle_server'] = True
+    else:
+        c['kindle_server'] = False
+        
     if c['kindle_server'] == False:
         try:
             webserver = Process(target=www, args=())

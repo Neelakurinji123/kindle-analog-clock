@@ -546,6 +546,11 @@ if __name__ == "__main__":
     else:
         c['tz'] = zoneinfo.ZoneInfo(c["timezone"])
     
+    if os.uname().nodename == 'kindle':
+        c['kindle_server'] = True
+    else:
+        c['kindle_server'] = False
+    
     if flag_config == True:
         print(json.dumps(c, ensure_ascii=False, indent=4))
         print(json.dumps(c_alarm, ensure_ascii=False, indent=4))

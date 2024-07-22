@@ -23,7 +23,6 @@
 		"stroke_music_inner_radius": 235,
 		"bg_color_sec": "rgb(220,220,220)",
 		"bg_color_min": "rgb(220,220,220)",
-		"bg_color_hour": "rgb(220,220,220)",
-		"kindle_server": true
+		"bg_color_hour": "rgb(220,220,220)"
 	}
 }
